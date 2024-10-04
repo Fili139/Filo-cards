@@ -1,19 +1,28 @@
 // Card.js
-import React from 'react';
+import React, { useState } from 'react';
 import './Card.css';
 
-const Card = ({ code, image, suit, value, selectedCard, setSelectedCard }) => {
+const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard, isSelected }) => {
+  const style = isSelected ? "card-image card-selected" : "card-image";
 
   const onCardClick = (code) => {
-    if (code != selectedCard)
-      setSelectedCard(code)
-    else
-      setSelectedCard("")
+    if (origin === "hand") {
+      if (code != selectedCard)
+        setSelectedCard(code)
+      else
+        setSelectedCard("")
+    }
+    else if (origin === "table"){
+      if (!selectedCard.includes(code))
+        setSelectedCard((prevSelectedCard) => [...prevSelectedCard, code])
+      else
+        setSelectedCard(selectedCard.filter(card => card != code))
+    }
   }
 
   return (
     <div>
-      <img onClick={() => onCardClick(code)} src={image} className="card-image" />
+      <img onClick={() => onCardClick(code)} src={image} className={style} />
     </div>
   );
 }
