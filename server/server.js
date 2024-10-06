@@ -8,13 +8,13 @@ const server = http.createServer(app);
 
 // Configura il middleware cors
 app.use(cors({
-    origin: 'http://localhost:5173',  // Permetti l'accesso al frontend (React app)
+    origin: ['http://localhost:5173', 'https://ciapachinze.surge.sh'],  // Permetti l'accesso al frontend (React app)
     methods: ['GET', 'POST'],
 }));
 
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:5173",  // Indica l'origine da cui accetti richieste
+        origin: ['http://localhost:5173', 'https://ciapachinze.surge.sh'],  // Indica l'origine da cui accetti richieste
         methods: ["GET", "POST"]
     }
 });

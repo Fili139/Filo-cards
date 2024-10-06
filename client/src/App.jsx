@@ -50,7 +50,8 @@ function App() {
     if (mode === "multi") {
 
       // Crea la connessione a Socket.IO solo una volta quando il componente si monta
-      const newSocket = io('http://localhost:3000');
+      const newSocket = io('https://ciapachinze.onrender.com');
+      //const newSocket = io('http://localhost:3000');
 
       setSocket(newSocket);
   
