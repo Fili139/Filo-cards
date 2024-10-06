@@ -1,9 +1,9 @@
 // Card.js
-import React, { useState } from 'react';
+import React from 'react';
 import './Card.css';
 
 const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard, isSelected }) => {
-  const style = isSelected ? "card-image card-selected" : "card-image";
+  const style = isSelected ? ( origin === "hand" ? "card-hand-image card-selected" : "card-table-image card-selected") :  (origin === "hand" ? "card-hand-image" : "card-table-image");
 
   const onCardClick = (code) => {
     if (origin === "hand") {

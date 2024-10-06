@@ -77,10 +77,10 @@ io.on('connection', (socket) => {
     });
 
     // Gestione di messaggi tra i giocatori
-    socket.on('playerMove', (cards_taken, newTable, room) => {
+    socket.on('playerMove', (played_card, cards_taken, newTable, room) => {
         console.log(`Mossa del giocatore: ${socket.id}`, "ha preso:", cards_taken);
         
-        socket.to(room).emit('playerMove', cards_taken, newTable);
+        socket.to(room).emit('playerMove', played_card, cards_taken, newTable);
     });
 
     socket.on('playerDraw', (count, remaining, room) => {
@@ -100,6 +100,16 @@ io.on('connection', (socket) => {
         socket.to(room).emit('dealCards', table_cards, remaining);
     });
 
+    socket.on('scopeUpdate', (scope, room) => {
+        console.log(`Il giocatore: ${socket.id}`, "ha fatto:", scope, "scopa/e");
+        
+        socket.to(room).emit('scopeUpdate', scope);
+    });
+
+    socket.on('trisOrLess10', (cards, room) => {
+        socket.to(room).emit('trisOrLess10', cards);
+    });
+    
     // Gestisci la fine del turno da parte di un giocatore
     socket.on('endTurn', (room) => {
         const roomData = rooms[room];

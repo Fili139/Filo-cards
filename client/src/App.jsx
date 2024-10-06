@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 
 import Hand from './components/Hand'
 import Deck from './components/Deck'
+import OpponentHand from './components/OpponentHand'
 import JoinRoomForm from './components/JoinRoomForm'
+
+import { getValueOfCard, checkTris, checkLess10, check15or30 } from './utils'
 
 import io from 'socket.io-client'
 
@@ -12,13 +15,14 @@ import Table from './components/Table'
 
 function App() {
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
+  //const deckCards = "AS,AD,3D,KH";
 
   const [socket, setSocket] = useState(null);
 
   const [room, setRoom] = useState("");
 
   const [players, setPlayers] = useState([]);
-  const [currentTurn, setCurrentTurn] = useState(null);
+  const [currentTurn, setCurrentTurn] = useState("");
   const [isMyTurn, setIsMyTurn] = useState(false);
 
   const [playerID, setPlayerID] = useState("");
@@ -33,10 +37,14 @@ function App() {
   const [remaining, setRemaining] = useState(52);
   
   const [opponentsHand, setOpponentsHand] = useState(0);
+  const [opponentPlayedCards, setOpponentPlayedCards] = useState([]);
+  const [resetOpponentHand, setResetOpponentHand] = useState(true);
 
   const [selectedCard, setSelectedCard] = useState("");
   const [selectedTableCard, setSelectedTableCard] = useState([]);
   
+  const [scope, setScope] = useState(0);
+  const [opponentScope, setOpponentScope] = useState(0);
 
   useEffect(() => {
     if (mode === "multi") {
@@ -68,12 +76,27 @@ function App() {
       });
   
       /* LOGICA DI GIOCO - RICEVO MOSSE DELL'AVVERSARIO */
-      newSocket.on('playerMove', (cards_taken, newTable) => {
-        console.log('Mossa ricevuta dall\'avversario: carte prese:', cards_taken);
-        
+      
+      newSocket.on('playerMove', (played_card, cards_taken, newTable) => {
+        //console.log('Mossa ricevuta dall\'avversario: carte prese:', cards_taken);
+        //console.debug("LAST OPPP MOVE:", played_card, cards_taken)
+
+        if (played_card.code) {
+          setOpponentPlayedCards((lastPlayedCards) => {
+            if (lastPlayedCards.length+1 < 3)
+              return [...lastPlayedCards, played_card]
+            else return lastPlayedCards
+          })
+        }
+
         setTable(newTable)
       });
-  
+      
+      newSocket.on('trisOrLess10', (cards) => {
+        setResetOpponentHand(false)
+        setOpponentPlayedCards(cards)
+      });
+
       newSocket.on('playerDraw', (count, remaining) => {
         console.log("L'avversario ha pescato:", count, "carte rimanenti nel mazzo:", remaining);
         setRemaining(remaining)
@@ -84,11 +107,18 @@ function App() {
       });
   
       newSocket.on('dealCards', (table_cards, remaining) => {
-        console.log("L'avversario ha dato le carte:", table_cards);
+        //console.log("L'avversario ha dato le carte:", table_cards);
         
         setTable(table_cards);
         setRemaining(remaining)
       });
+
+      newSocket.on('scopeUpdate', (opponent_scope) => {
+        console.log("L'avversario ha fatto:", opponent_scope, "scopa/e");
+        
+        setOpponentScope(opponent_scope)
+      });
+
       /**************************************************/
   
       // Funzione di pulizia: disconnetti il socket quando il componente si smonta
@@ -117,7 +147,7 @@ function App() {
   }, [selectedTableCard])
 
   useEffect(() => {
-    if (hand.length > 0) {
+    if (socket) {
       console.debug("Player hand:", hand)
   
       socket.emit("handUpdate", hand.length, room)
@@ -125,15 +155,20 @@ function App() {
   }, [hand])
 
   useEffect(() => {
-    if (table.length > 0) {
+    if (table.length > 0)
       console.debug("Table:", table)
-    }
+
   }, [table])
 
   useEffect(() => {
-    setIsMyTurn(playerID === currentTurn);
+    setIsMyTurn(playerID === currentTurn.replaceAll("-", ""));
   }, [playerID, currentTurn]);
 
+  useEffect(() => {
+    if (socket) {
+      socket.emit("scopeUpdate", scope, room)
+    }
+  }, [scope]);
 
   const endTurn = () => {
     if (isMyTurn)
@@ -163,11 +198,25 @@ function App() {
     //todo - controllare se ci sono abbastanza carte per pescare
     fetch("https://www.deckofcardsapi.com/api/deck/"+deckID+"/draw/?count="+count)
     .then((res) => res.json())
-    .then((data) => {
+    .then(async (data) => {
       if (data.cards) {
 
         setTable((prevTable) => [...prevTable, ...data.cards]);
         setRemaining(data.remaining)
+
+        const is15or30 = check15or30(data.cards)
+
+        if (is15or30 == 15 || is15or30 == 30) {
+          if (is15or30 == 15)
+            setScope(prev => prev+1)
+          else if (is15or30 == 30)
+            setScope(prev => prev+2)
+
+          const tableCards = table.map(card => card.code);
+          const tableCardsTaken = selectedCard+","+tableCards.join(",")
+
+          await addToPile(tableCardsTaken, tableCards, deckID)
+        }
 
         socket.emit('dealCards', data.cards, data.remaining, room);
       }
@@ -183,37 +232,119 @@ function App() {
         setHand((prevHand) => [...prevHand, ...data.cards]);
         setRemaining(data.remaining)
 
+        if (resetOpponentHand)
+          setOpponentPlayedCards([])
+        else
+          setResetOpponentHand(true)
+        
+        if (checkTris(data.cards)) {
+          setScope(prev => prev+10)
+          socket.emit('trisOrLess10', data.cards, room)
+        }
+
+        if (checkLess10(data.cards)) {
+          setScope(prev => prev+3)
+          socket.emit('trisOrLess10', data.cards, room)
+        }
+
         socket.emit('playerDraw', count, data.remaining, room);
       }
     })
   }
 
-  const getValueOfCard = (card) => {
-    if (card[0] === "A")
-      return '1'
-    else if (card[0] === "J")
-      return '8'
-    else if (card[0] === "Q")
-      return '9'
-    else if (card[0] === "K")
-      return '10'
-    return card[0];
+  const addToPile = async (cardsTaken, selectedTableCards, deck_id=deck) => {
+    return fetch("https://www.deckofcardsapi.com/api/deck/"+deck_id+"/pile/"+playerID+"_pile/add/?cards="+cardsTaken)
+    .then((res) => res.json())
+    .then(async (data) => {
+      if (data.piles[playerID+"_pile"]) {
+
+        const newTable = table.filter(x => !selectedTableCards.includes(x.code))
+
+        if (newTable.length == 0)
+          setScope(prev => prev+1)
+
+        setHand(
+          hand.filter(x => x.code != selectedCard)
+        )
+
+        setTable(newTable)
+
+        setSelectedCard("")
+        setSelectedTableCard([])
+
+        socket.emit('playerMove', {code: selectedCard}, cardsTaken, newTable, room);
+
+        return true;
+      }
+    })
+  }
+
+  const addCardToTable = () => {
+    setHand(
+      hand.filter(x => x.code != selectedCard)
+    )
+
+    const playedCard = hand.filter(x => x.code == selectedCard)
+
+    const newTable = [...table, ...playedCard]
+
+    setSelectedCard("")
+    setTable((prevTable) => [...prevTable, ...playedCard]);
+
+    socket.emit('playerMove', playedCard[0], "", newTable, room);
+
+    // la mossa è sempre valida
+    return true;
   }
 
   const playerMove = async () => {
-    //Controllare se la mossa è valida --> TODO
-    //Se è valida - aggiungo le carte alla pila
-
     let moveIsValid = false;
+
+    // gestione asso
+    if (selectedCard[0] === "A") {
+      const tableCards = table.map(card => card.code);
+      const tableCardsTaken = selectedCard+","+tableCards.join(",")
+
+      const aceInTable = table.some(card => card.code[0] === "A")
+
+      if (selectedTableCard.length == 0) {
+        if (aceInTable)
+          return false
+        else {
+          if (table.length > 0)
+            return await addToPile(tableCardsTaken, tableCards)
+          else
+            return addCardToTable()
+        }
+      }
+      else {
+        const cardsTaken = selectedCard+","+selectedTableCard.join(",")
+        const cardsTakenArray = cardsTaken.split(",")
+
+        cardsTakenArray.shift()
+
+        if (aceInTable) {
+          if (!cardsTakenArray.some(card => card[0] === "A"))
+            return false
+          else
+            return await addToPile(cardsTaken, selectedTableCard)
+        }
+        else 
+          return await addToPile(cardsTaken, tableCards)
+      }
+    }
+    // fine gestione asso
+
+
 
     if (selectedTableCard.length > 0) {
       const cardsTaken = selectedCard+","+selectedTableCard.join(",")
       const cardsTakenArray = cardsTaken.split(",")
 
       const playedCard = cardsTakenArray.shift()
-      
+
       if (cardsTakenArray.length === 1) {
-        if (getValueOfCard(playedCard) === getValueOfCard(cardsTakenArray[0]))
+        if (getValueOfCard(playedCard) === getValueOfCard(cardsTakenArray[0]) || parseInt(getValueOfCard(playedCard)) + parseInt(getValueOfCard(cardsTakenArray[0])) == 15)
           moveIsValid = true
         else
           moveIsValid = false
@@ -224,47 +355,19 @@ function App() {
         for (let i=0; i<cardsTakenArray.length; i++)
           sumOfCardsTaken += parseInt(getValueOfCard(cardsTakenArray[i]))
 
-        console.debug(sumOfCardsTaken)
+        if (sumOfCardsTaken == getValueOfCard(playedCard) || (sumOfCardsTaken + parseInt(getValueOfCard(playedCard)) == 15))
+          moveIsValid = true
+        else
+          moveIsValid = false
       }
 
       if (!moveIsValid) return moveIsValid;
 
-      await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/pile/"+playerID+"_pile/add/?cards="+cardsTaken)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.piles[playerID+"_pile"]) {
-  
-          const newTable = table.filter(x => x.code != selectedTableCard)
-  
-          setHand(
-            hand.filter(x => x.code != selectedCard)
-          )
-  
-          setTable(newTable)
-  
-          setSelectedCard("")
-          setSelectedTableCard([])
-  
-          socket.emit('playerMove', cardsTaken, newTable, room);
+      return await addToPile(cardsTaken, selectedTableCard)
 
-          return moveIsValid;
-        }
-      })
     }
     else {
-      setHand(
-        hand.filter(x => x.code != selectedCard)
-      )
-
-      const playedCard =  hand.filter(x => x.code == selectedCard)
-      const newTable = [...table, ...playedCard]
-
-      setSelectedCard("")
-      setTable((prevTable) => [...prevTable, ...playedCard]);
-
-      socket.emit('playerMove', "", newTable, room);
-
-      return moveIsValid;
+      return addCardToTable()
     }
   }
 
@@ -337,11 +440,18 @@ function App() {
 
       {deck &&
         <>
-          <p>Cards in opponent's hand: {opponentsHand}</p>
+          {/*<p>Cards in opponent's hand: {opponentsHand}</p>*/}
 
-          <Deck 
-            remaining={remaining}
+          <OpponentHand
+            playedCards={opponentPlayedCards}
           />
+
+          {/*
+            <Deck 
+              remaining={remaining}
+            />
+          */}
+
           <p>Table</p>
           <Table
             cards={table}
@@ -353,6 +463,7 @@ function App() {
 
       {(deck && hand.length <= 0 && isMyTurn) &&
         <>
+          <br/>
           <button onClick={async () => {
             await drawCards()
             endTurn()
@@ -369,17 +480,29 @@ function App() {
             setSelectedCard={setSelectedCard}
           />
 
-          <br/>
-
           {(selectedCard && isMyTurn) &&
-            <button onClick={async () => {
-              if (await playerMove())
-                endTurn()
-              else
-                console.debug("La mossa non è valida riprovare.")
-            }}>Make move</button>
+            <>
+              <br/>
+              <button onClick={async () => {
+                const moveIsValid = await playerMove()
+                if (moveIsValid)
+                  endTurn()
+                else
+                  console.debug("La mossa non è valida riprovare.")
+              }}>
+                {selectedTableCard.length <= 0 ? "Add to the table" : "Take cards"}
+              </button>
+            </>
           }
         </>
+      }
+
+      {deck &&
+        <div>
+          Scope: {scope}
+          <br/>
+          Opponent's scope: {opponentScope}
+        </div>
       }
     </div>
   )

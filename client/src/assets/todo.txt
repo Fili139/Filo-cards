@@ -1,0 +1,9 @@
+Calcolo del fantastico punteggio
+Il 7 di cuori può valere come un qualunque numero (perchè è molto fluido) se serve per fare 15 o 30 nella tavola iniziale o meno di 10 nella mano
+***Prendere tutto con l'asso carino e patatoso***
+***Sistema di scopa (non quello che pensi tu)***
+***All'inizio sistemare se esce 15 o 30 e fai 1 o 2 scope stronze***
+***Bug: numero di carte nella mano avversaria è sbagliato quando si finiscono le carte in mano***
+***Bug: (non mi piace scritto così) ogni tanto entrambi i client (perchè non possiamo parlare italiano) aspettano la morte....no non è vero, aspettano la mossa dell'avversario***
+***Contrololare se ogni mano è meno di 10 (TOC TOC) e poi girare le carte in modo che l'avversario le veda***
+***Contare per le 3 carte uguali le 10 scope e girare le carte in modo che l'avversario le veda***

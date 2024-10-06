@@ -18,8 +18,12 @@
   font-size: 30px;
 }
 
-.card-image {
+.card-table-image {
   height: 14vh;
+}
+
+.card-hand-image {
+  height: 13vh;
 }
 
 .card-value {
@@ -27,5 +31,5 @@
 }
 
 .card-selected {
-  border: 1vh solid gold;
+  border: 0.5vh solid gold;
 }
