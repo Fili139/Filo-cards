@@ -48,8 +48,6 @@ io.on('connection', (socket) => {
 
     socket.on('joinRoom', (room) => {
         console.log(`Il giocatore: ${socket.id}`, "vuole entrare nella room", room);
-        
-        socket.join(room);
 
         // Se la room non esiste ancora, creala
         if (!rooms[room]) {
@@ -58,15 +56,24 @@ io.on('connection', (socket) => {
                 currentTurnIndex: 0,
             };
         }
-    
-        // Aggiungi il giocatore alla lista della room
-        rooms[room].players.push(socket.id);
-    
-        // Notifica tutti i giocatori nella room del nuovo stato
-        io.to(room).emit('playersUpdate', {
-            players: rooms[room].players,
-            currentTurn: rooms[room].players[rooms[room].currentTurnIndex],
-        });
+        
+        if (rooms[room].players.length < 2) {
+            // Aggiungi il giocatore alla lista della room
+            rooms[room].players.push(socket.id);
+            
+            socket.join(room);
+            
+            console.log(`Il giocatore: ${socket.id}`, "è entrato nella room", room);
+
+            // Notifica tutti i giocatori nella room del nuovo stato
+            io.to(room).emit('playersUpdate', {
+                players: rooms[room].players,
+                currentTurn: rooms[room].players[rooms[room].currentTurnIndex],
+            });
+        }
+        else {
+            //todo -> mostrare messaggio corretto se già 2 persone sono nella stanza
+        }
     });
 
     // Invio deck id generato da giocatore
@@ -108,6 +115,10 @@ io.on('connection', (socket) => {
 
     socket.on('trisOrLess10', (cards, room) => {
         socket.to(room).emit('trisOrLess10', cards);
+    });
+
+    socket.on('playerScore', (cards, diamonds, scope, room) => {
+        socket.to(room).emit('playerScore', cards, diamonds, scope);
     });
     
     // Gestisci la fine del turno da parte di un giocatore

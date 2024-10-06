@@ -32,5 +32,14 @@ export const checkLess10 = (cards) => {
   return sum <= 10
 }
 
+export const handleBeforeUnload = (e) => {
+  e.preventDefault();
+  
+  const message =
+    "Are you sure you want to leave? All provided data will be lost.";
+  e.returnValue = message;
+  return message;
+};
 
-export default { getValueOfCard, check15or30, checkTris, checkLess10 };
+
+export default { handleBeforeUnload, getValueOfCard, check15or30, checkTris, checkLess10 };

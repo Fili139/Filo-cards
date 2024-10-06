@@ -4,8 +4,9 @@ import Hand from './components/Hand'
 import Deck from './components/Deck'
 import OpponentHand from './components/OpponentHand'
 import JoinRoomForm from './components/JoinRoomForm'
+import DisplayScore from './components/DisplayScore'
 
-import { getValueOfCard, checkTris, checkLess10, check15or30 } from './utils'
+import { handleBeforeUnload, getValueOfCard, checkTris, checkLess10, check15or30 } from './utils'
 
 import io from 'socket.io-client'
 
@@ -15,7 +16,9 @@ import Table from './components/Table'
 
 function App() {
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
-  //const deckCards = "AS,AD,3D,KH";
+  //const deckCards = "AS,AD,3D,KH,2D,2C,2H,3S,4D,3C";
+
+  const [gameIsOver, setGameIsOver] = useState(false);
 
   const [socket, setSocket] = useState(null);
 
@@ -46,6 +49,12 @@ function App() {
   const [scope, setScope] = useState(0);
   const [opponentScope, setOpponentScope] = useState(0);
 
+  const [finalScore, setFinalScore] = useState({});
+  const [opponentFinalScore, setOpponentFinalScore] = useState({});
+
+  const [isLastToTake, setIsLastToTake] = useState(false);
+
+
   useEffect(() => {
     if (mode === "multi") {
 
@@ -75,8 +84,6 @@ function App() {
       newSocket.on('turnUpdate', ({ currentTurn }) => {
         setCurrentTurn(currentTurn);
       });
-  
-      /* LOGICA DI GIOCO - RICEVO MOSSE DELL'AVVERSARIO */
       
       newSocket.on('playerMove', (played_card, cards_taken, newTable) => {
         //console.log('Mossa ricevuta dall\'avversario: carte prese:', cards_taken);
@@ -90,6 +97,9 @@ function App() {
           })
         }
 
+        if (cards_taken)
+          setIsLastToTake(false)
+
         setTable(newTable)
       });
       
@@ -100,6 +110,7 @@ function App() {
 
       newSocket.on('playerDraw', (count, remaining) => {
         console.log("L'avversario ha pescato:", count, "carte rimanenti nel mazzo:", remaining);
+
         setRemaining(remaining)
       });
   
@@ -115,29 +126,45 @@ function App() {
       });
 
       newSocket.on('scopeUpdate', (opponent_scope) => {
-        console.log("L'avversario ha fatto:", opponent_scope, "scopa/e");
-        
         setOpponentScope(opponent_scope)
       });
 
-      /**************************************************/
+      newSocket.on('playerScore', (cards, diamonds, scope) => {
+        setOpponentFinalScore({
+          cards: cards,
+          diamonds: diamonds,
+          scope: scope
+        })
+      });
+
   
       // Funzione di pulizia: disconnetti il socket quando il componente si smonta
       return () => {
         newSocket.off('yourID');
-        newSocket.off('playerID');
         newSocket.off('deckID');
         newSocket.off('playersUpdate');
         newSocket.off('turnUpdate');
         newSocket.off('playerMove');
+        newSocket.off('trisOrLess10');
         newSocket.off('playerDraw');
         newSocket.off('handUpdate');
         newSocket.off('dealCards');
+        newSocket.off('scopeUpdate');
+        newSocket.off('playerScore');
   
         newSocket.disconnect();
       };
     }
   }, [room])
+
+
+  useEffect(() => {
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   useEffect(() => {
     console.debug("Selected card:", selectedCard)
@@ -170,6 +197,23 @@ function App() {
       socket.emit("scopeUpdate", scope, room)
     }
   }, [scope]);
+
+  useEffect(() => {
+    if (remaining <= 0 && hand.length === 0 && opponentsHand === 0 && !gameIsOver) {
+      window.alert("Game is over!")
+      setGameIsOver(true)
+    }
+  }, [remaining, hand, opponentsHand]);
+
+  useEffect(() => {
+    if (gameIsOver)
+      computeScore()
+  }, [gameIsOver]);
+
+  useEffect(() => {
+    console.debug("last to take?", isLastToTake)
+  }, [isLastToTake]);
+  
 
   const endTurn = () => {
     if (isMyTurn)
@@ -225,32 +269,33 @@ function App() {
   }
 
   const drawCards = async (count=3) => {
-    //todo - controllare se ci sono abbastanza carte per pescare
-    await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/draw/?count="+count)
-    .then((res) => res.json())
-    .then((data) => {
-      if (data.cards) {
-        setHand((prevHand) => [...prevHand, ...data.cards]);
-        setRemaining(data.remaining)
-
-        if (resetOpponentHand)
-          setOpponentPlayedCards([])
-        else
-          setResetOpponentHand(true)
-        
-        if (checkTris(data.cards)) {
-          setScope(prev => prev+10)
-          socket.emit('trisOrLess10', data.cards, room)
+    if (remaining-count >= 0) {
+      await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/draw/?count="+count)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.cards) {
+          setHand((prevHand) => [...prevHand, ...data.cards]);
+          setRemaining(data.remaining)
+  
+          if (resetOpponentHand)
+            setOpponentPlayedCards([])
+          else
+            setResetOpponentHand(true)
+          
+          if (checkTris(data.cards)) {
+            setScope(prev => prev+10)
+            socket.emit('trisOrLess10', data.cards, room)
+          }
+  
+          if (checkLess10(data.cards)) {
+            setScope(prev => prev+3)
+            socket.emit('trisOrLess10', data.cards, room)
+          }
+  
+          socket.emit('playerDraw', count, data.remaining, room);
         }
-
-        if (checkLess10(data.cards)) {
-          setScope(prev => prev+3)
-          socket.emit('trisOrLess10', data.cards, room)
-        }
-
-        socket.emit('playerDraw', count, data.remaining, room);
-      }
-    })
+      })
+    }
   }
 
   const addToPile = async (cardsTaken, selectedTableCards, deck_id=deck) => {
@@ -274,6 +319,8 @@ function App() {
         setSelectedTableCard([])
 
         socket.emit('playerMove', {code: selectedCard}, cardsTaken, newTable, room);
+
+        setIsLastToTake(true)
 
         return true;
       }
@@ -391,6 +438,49 @@ function App() {
     }
   };
 
+  const computeScore = async () => {
+    if (isLastToTake) {
+      const tableCards = table.map(card => card.code);
+      const tableCardsTaken = selectedCard+","+tableCards.join(",")
+
+      await addToPile(tableCardsTaken, tableCards)
+    }
+
+    return fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/pile/"+playerID+"_pile/list/")
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.piles[playerID+"_pile"]) {
+        const pile = data.piles[playerID+"_pile"].cards
+  
+        //compute diamonds
+        let diamonds = 0
+        for (const card of pile) {
+          if (card.code[0] === "D")
+            diamonds++
+        }
+  
+        setFinalScore({
+          cards: pile.length,
+          diamonds: diamonds,
+          scope: scope
+        })
+  
+        socket.emit("playerScore", pile.length, diamonds, scope, room)
+      }
+      else {
+        setFinalScore({
+          cards: 0,
+          diamonds: 0,
+          scope: 0
+        })
+  
+        socket.emit("playerScore", 0, 0, 0, room)
+      }
+
+    });
+  }
+
+
 
   return (
     <div className="app">
@@ -404,107 +494,123 @@ function App() {
         </>
       }
 
-      {playerID &&
-        <>
-          <p>Room: {room}</p>
-          {/*<p>Your ID is: {playerID}</p>*/}
-        </>
+      {gameIsOver &&
+        <DisplayScore
+          finalScore={finalScore}
+          opponentFinalScore={opponentFinalScore}
+        />
       }
 
-      {room &&
+      {!gameIsOver &&
         <>
-          {/*
-            <p>Giocatori connessi nella room {room}:</p>
-            <ul>
-              {players.map((player) => (
-                <li key={player} style={{ fontWeight: player === currentTurn ? 'bold' : 'normal' }}>
-                  {player} {player === currentTurn ? '(di turno)' : ''}
-                </li>
-              ))}
-            </ul>
-          */}
+          {playerID &&
+            <>
+              <p>Room: {room}</p>
+              {/*<p>Your ID is: {playerID}</p>*/}
+            </>
+          }
 
-          {isMyTurn ? (
-            <div>
-              <h3>It's your turn!</h3>
-              {/*<button onClick={() => endTurn()}>Termina turno</button>*/}
-            </div>
-          ) : (
-            <h3>Waiting for the opponent...</h3>
-          )}
-        </>
-      }
+          {room &&
+            <>
+              {/*
+                <p>Giocatori connessi nella room {room}:</p>
+                <ul>
+                  {players.map((player) => (
+                    <li key={player} style={{ fontWeight: player === currentTurn ? 'bold' : 'normal' }}>
+                      {player} {player === currentTurn ? '(di turno)' : ''}
+                    </li>
+                  ))}
+                </ul>
+              */}
 
-      {(!deck && mode && (!cardsDealt && isMyTurn)) &&
-        <button onClick={() => getDeck()}>Deal cards</button>
-      }
+              {isMyTurn ? (
+                <div>
+                  <h3>It's your turn!</h3>
+                  {/*<button onClick={() => endTurn()}>Termina turno</button>*/}
+                </div>
+              ) : (
+                <h3>Waiting for the opponent...</h3>
+              )}
+            </>
+          }
 
-      {deck &&
-        <>
-          {/*<p>Cards in opponent's hand: {opponentsHand}</p>*/}
+          {(!deck && mode && (!cardsDealt && isMyTurn)) &&
+            <button onClick={() => getDeck()}>Deal cards</button>
+          }
 
-          <OpponentHand
-            playedCards={opponentPlayedCards}
-          />
+          {deck &&
+            <>
 
-          {/*
-            <Deck 
-              remaining={remaining}
-            />
-          */}
+              <OpponentHand
+                playedCards={opponentPlayedCards}
+              />
 
-          <p>Table</p>
-          <Table
-            cards={table}
-            selectedTableCard={selectedTableCard}
-            setSelectedTableCard={setSelectedTableCard}
-          />
-        </>
-      }
+              {/*
+                <Deck 
+                  remaining={remaining}
+                />
+              */}
 
-      {(deck && hand.length <= 0 && isMyTurn) &&
-        <>
-          <br/>
-          <button onClick={async () => {
-            await drawCards()
-            endTurn()
-          }}>Draw cards</button>
-        </>
-      }
+              <div>
+                Cards remaining: {remaining}
+              </div>
 
-      {hand.length > 0 &&
-        <>
-          <p>Player's hand</p>
-          <Hand
-            cards={hand}
-            selectedCard={selectedCard}
-            setSelectedCard={setSelectedCard}
-          />
+              <p>Table</p>
+              <Table
+                cards={table}
+                selectedTableCard={selectedTableCard}
+                setSelectedTableCard={setSelectedTableCard}
+              />
+            </>
+          }
 
-          {(selectedCard && isMyTurn) &&
+          {(deck && hand.length <= 0 && isMyTurn) &&
             <>
               <br/>
               <button onClick={async () => {
-                const moveIsValid = await playerMove()
-                if (moveIsValid)
-                  endTurn()
-                else
-                  console.debug("La mossa non è valida riprovare.")
-              }}>
-                {selectedTableCard.length <= 0 ? "Add to the table" : "Take cards"}
-              </button>
+                await drawCards()
+                endTurn()
+              }}>Draw cards</button>
             </>
+          }
+
+          {hand.length > 0 &&
+            <>
+              <p>Player's hand</p>
+              <Hand
+                cards={hand}
+                selectedCard={selectedCard}
+                setSelectedCard={setSelectedCard}
+              />
+
+              {(selectedCard && isMyTurn) &&
+                <>
+                  <br/>
+                  <button onClick={async () => {
+                    const moveIsValid = await playerMove()
+                    if (moveIsValid)
+                      endTurn()
+                    else
+                      console.debug("La mossa non è valida riprovare.")
+                  }}>
+                    {selectedTableCard.length <= 0 ? "Add to the table" : "Take cards"}
+                  </button>
+                </>
+              }
+            </>
+          }
+
+          {deck &&
+            <div>
+              Scope: {scope}
+              <br/>
+              Opponent's scope: {opponentScope}
+            </div>
           }
         </>
       }
 
-      {deck &&
-        <div>
-          Scope: {scope}
-          <br/>
-          Opponent's scope: {opponentScope}
-        </div>
-      }
+      
     </div>
   )
 }
