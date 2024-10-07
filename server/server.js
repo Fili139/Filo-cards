@@ -6,6 +6,8 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 
+const port = process.env.PORT || 3000;
+
 // Configura il middleware cors
 app.use(cors({
     origin: ['http://localhost:5173', 'https://ciapachinze.surge.sh'],  // Permetti l'accesso al frontend (React app)
@@ -165,6 +167,6 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => {
-    console.log('Server in ascolto sulla porta 3000');
+server.listen(port, () => {
+    console.log(`Server in ascolto sulla porta ${port}`);
 });
