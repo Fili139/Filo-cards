@@ -24,6 +24,10 @@ const io = new Server(server, {
 // Memorizza i giocatori e i turni per ogni room
 const rooms = {};
 
+app.get('/', (req, res) => {
+    res.redirect('https://ciapachinze.surge.sh');
+})
+
 // Quando un giocatore si connette
 io.on('connection', (socket) => {
     console.log(`Giocatore connesso: ${socket.id}`);
