@@ -74,7 +74,6 @@ function App() {
       newSocket.emit("getRooms")
       
       newSocket.on('getRooms', (rooms) => {
-        console.debug(rooms)
         setRooms(rooms)
       });
 
@@ -518,7 +517,7 @@ function App() {
           <br/>
           <br/>
 
-          <a href='https://it.wikipedia.org/wiki/Cirulla' target='_blank'>Click me to check the rules</a>
+          <a href='https://it.wikipedia.org/wiki/Cirulla' target='_blank'>Click here to check the rules</a>
         </>
       }
 
@@ -558,23 +557,30 @@ function App() {
                 </ul>
               */}
 
-              {isMyTurn ? (
-                <div>
-                  <h3>It's your turn!</h3>
-                </div>
-              ) : (
-                <h3>Waiting for the opponent...</h3>
-              )}
-            </>
-          }
+              { isMyTurn ? <h3>It's your turn!</h3> : <h3>Waiting for the opponent...</h3> }
+              { !deck && players.map(player => {
+                return (
+                  <li>
+                    {player} {player.replaceAll("-", "") === playerID ? '(you)' : ''}
+                  </li>  
+                )
+              })}
 
-          {(!deck && mode && (!cardsDealt && isMyTurn)) &&
-            <button onClick={() => getDeck()}>Deal cards</button>
+              {!deck && isMyTurn && !cardsDealt &&
+                <>
+                  <br/>
+                  {players.length === 2 ?
+                    <button onClick={() => getDeck()}>Deal cards</button>
+                  :
+                    <p>2 players needed to start the game</p>
+                  }
+                </>
+              }
+            </>
           }
 
           {deck &&
             <>
-
               <OpponentHand
                 playedCards={opponentPlayedCards}
               />
