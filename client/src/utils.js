@@ -41,5 +41,40 @@ export const handleBeforeUnload = (e) => {
   return message;
 };
 
+export const computePrimiera = (cards) => {
+  const primieraValues = {
+    '7': 21,
+    '6': 18,
+    'A': 16,
+    '5': 15,
+    '4': 14,
+    '3': 13,
+    '2': 12,
+    'K': 10,
+    'Q': 10,
+    'J': 10
+  };
+  
+  const bestCards = {};
 
-export default { handleBeforeUnload, getValueOfCard, check15or30, checkTris, checkLess10 };
+  cards.forEach((card) => {
+    const value = card.code[0]
+    const suit = card.code[1]
+
+    if (!bestCards[suit] || primieraValues[value] > primieraValues[bestCards[suit][0]])
+      bestCards[suit] = card.code
+  });
+
+  // Sommiamo i valori delle migliori carte
+  const primieraScore = Object.values(bestCards).reduce((acc, card) => {
+      return acc + primieraValues[card[0]];
+  }, 0);
+
+  return primieraScore;
+};
+
+export const grandeCondition = ["QD", "JD", "KD"];
+
+export const piccolaCondition = ["AD", "2D", "3D", "4D", "5D", "6D", "7D"];
+
+export default { handleBeforeUnload, getValueOfCard, check15or30, checkTris, checkLess10, computePrimiera, grandeCondition, piccolaCondition };

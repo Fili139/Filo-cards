@@ -19,6 +19,8 @@ const DisplayScore = ({ finalScore, opponentFinalScore }) => {
                 Piccola: {finalScore.piccola ? finalScore.piccola : "no"}
                 <br/>
                 Grande: {finalScore.grande ? finalScore.grande : "no"}
+                <br/>
+                Primiera: {finalScore.primiera}
             </div>
 
             <br/>
@@ -38,6 +40,8 @@ const DisplayScore = ({ finalScore, opponentFinalScore }) => {
                 Piccola: {opponentFinalScore.piccola ? opponentFinalScore.piccola : "no"}
                 <br/>
                 Grande: {opponentFinalScore.grande ? "si" : "no"}
+                <br/>
+                Primiera: {opponentFinalScore.primiera}
             </div>
 
             <br/>

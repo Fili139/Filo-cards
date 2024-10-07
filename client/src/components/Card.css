@@ -1,29 +1,21 @@
-.card {
-  border: 1px solid #000;
-  border-radius: 8px;
-  width: 80px;
-  height: 120px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  background-color: white;
-  margin: 5px;
-  font-size: 24px;
-  color: black;
-}
-  
-.card-suit {
-  font-size: 30px;
-}
-
 .card-table-image {
   height: 14vh;
+
+  opacity: 1;
+	animation-name: fadeInOpacity;
+	animation-iteration-count: 1;
+	animation-timing-function: ease-in;
+	animation-duration: 0.5s;
 }
 
 .card-hand-image {
   height: 13vh;
+
+  opacity: 1;
+	animation-name: fadeInOpacity;
+	animation-iteration-count: 1;
+	animation-timing-function: ease-in;
+	animation-duration: 1s;
 }
 
 .card-table-image:hover, .card-hand-image:hover {
@@ -40,4 +32,13 @@
   /*border: 0.5vh solid gold;*/
   transform: translateY(-1rem) scale(1.05);
   box-shadow: 0 0 1rem rgba(255, 215, 0, 0.8);
+}
+
+@keyframes fadeInOpacity {
+	0% {
+    opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
 }

@@ -6,7 +6,7 @@ import OpponentHand from './components/OpponentHand'
 import JoinRoomForm from './components/JoinRoomForm'
 import DisplayScore from './components/DisplayScore'
 
-import { handleBeforeUnload, getValueOfCard, checkTris, checkLess10, check15or30 } from './utils'
+import { handleBeforeUnload, getValueOfCard, checkTris, checkLess10, check15or30, grandeCondition, piccolaCondition, computePrimiera } from './utils'
 
 import io from 'socket.io-client'
 
@@ -66,8 +66,8 @@ function App() {
 
   useEffect(() => {
     if (mode === "multi") {
-      //const newSocket = io('https://ciapachinze.onrender.com');
-      const newSocket = io('http://localhost:3000');
+      const newSocket = io('https://ciapachinze.onrender.com');
+      //const newSocket = io('http://localhost:3000');
 
       setSocket(newSocket);
       
@@ -134,14 +134,15 @@ function App() {
         setOpponentScope(opponent_scope)
       });
 
-      newSocket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande) => {
+      newSocket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande, primiera) => {
         setOpponentFinalScore({
           cards: cards,
           diamonds: diamonds,
           scope: scope,
           settebello: settebello,
           piccola: piccola,
-          grande: grande
+          grande: grande,
+          primiera: primiera
         })
       });
   
@@ -453,6 +454,7 @@ function App() {
         let settebello = false
         let piccola = false
         let grande = false
+        let primiera = 0
         for (const card of pile) {
           if (card.code === "7D")
             settebello = true
@@ -460,21 +462,21 @@ function App() {
             diamonds++
         }
         
-        const grandeCondition = ["QD", "JD", "KD"]
         grande = grandeCondition.every(condition => pile.some(card => card.code === condition))
 
-        const piccolaCondition = ["AD", "2D", "3D", "4D", "5D", "6D", "7D"]
         let ind = -1
         for (let i = 0; i < piccolaCondition.length; i++) {
             const condition = piccolaCondition[i]
             const match = pile.some(card => card.code === condition)
 
           if (!match)
-              break
+            break
           ind = i
         }
 
         piccola = ind >= 2 ? ind : false
+
+        primiera = computePrimiera(pile)
 
         setFinalScore({
           cards: pile.length,
@@ -482,10 +484,11 @@ function App() {
           scope: scope,
           settebello: settebello,
           piccola: piccola,
-          grande: grande
+          grande: grande,
+          primiera: primiera
         })
   
-        socket.emit("playerScore", pile.length, diamonds, scope, settebello, piccola, grande, room)
+        socket.emit("playerScore", pile.length, diamonds, scope, settebello, piccola, grande, primiera, room)
       }
       else {
         setFinalScore({
@@ -494,10 +497,11 @@ function App() {
           scope: 0,
           settebello: false,
           piccola: false,
-          grande: false
+          grande: false,
+          primiera: 0
         })
   
-        socket.emit("playerScore", 0, 0, 0, false, false, false, room)
+        socket.emit("playerScore", 0, 0, 0, false, false, false, 0, room)
       }
 
       window.alert("Game is over!")

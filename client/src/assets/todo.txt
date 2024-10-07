@@ -1,5 +1,8 @@
-Calcolo del fantastico punteggio
 Il 7 di cuori può valere come un qualunque numero (perchè è molto fluido) se serve per fare 15 o 30 nella tavola iniziale o meno di 10 nella mano
+***Calcolo del fantastico punteggio***
+***L'ultima carta giocata dell'avversario non si vede***
+***Le carte di un tris o meno di 10 rimango girate anche nelle mani successive***
+***Conteggio dei diamanti errato e punteggio avversario non viene mostrato (forse solo se il giocatore 1 clicca per primo)***
 ***Prendere tutto con l'asso carino e patatoso***
 ***Sistema di scopa (non quello che pensi tu)***
 ***All'inizio sistemare se esce 15 o 30 e fai 1 o 2 scope stronze***

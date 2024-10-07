@@ -127,8 +127,8 @@ io.on('connection', (socket) => {
         socket.to(room).emit('trisOrLess10', cards);
     });
 
-    socket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande, room) => {
-        socket.to(room).emit('playerScore', cards, diamonds, scope, settebello, piccola, grande);
+    socket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande, primiera, room) => {
+        socket.to(room).emit('playerScore', cards, diamonds, scope, settebello, piccola, grande, primiera);
     });
     
     // Gestisci la fine del turno da parte di un giocatore
