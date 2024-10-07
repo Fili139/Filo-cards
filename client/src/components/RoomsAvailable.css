@@ -1,0 +1,15 @@
+.room-available-empty {
+    color: green;
+}
+
+.room-available-empty:hover {
+    cursor: pointer;
+}
+
+.room-available-full {
+    color: red;
+}
+
+.room-available-full:hover {
+    cursor: not-allowed;
+}

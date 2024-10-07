@@ -26,6 +26,10 @@
   height: 13vh;
 }
 
+.card-table-image:hover, .card-hand-image:hover {
+  cursor: pointer;
+}
+
 .card-value {
   font-weight: bold;
 }

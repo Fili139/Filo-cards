@@ -38,6 +38,10 @@ io.on('connection', (socket) => {
     });
     */
 
+    socket.on('getRooms', () => {
+        socket.emit('getRooms', rooms);
+    });
+
     socket.on('getPlayersInRoom', (room, callback) => {
         const clientsInRoom = io.sockets.adapter.rooms.get(room);
         const clientCount = clientsInRoom ? clientsInRoom.size : 0;
@@ -117,8 +121,8 @@ io.on('connection', (socket) => {
         socket.to(room).emit('trisOrLess10', cards);
     });
 
-    socket.on('playerScore', (cards, diamonds, scope, room) => {
-        socket.to(room).emit('playerScore', cards, diamonds, scope);
+    socket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande, room) => {
+        socket.to(room).emit('playerScore', cards, diamonds, scope, settebello, piccola, grande);
     });
     
     // Gestisci la fine del turno da parte di un giocatore

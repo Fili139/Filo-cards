@@ -23,6 +23,7 @@ function App() {
   const [socket, setSocket] = useState(null);
 
   const [room, setRoom] = useState("");
+  const [rooms, setRooms] = useState([]);
 
   const [players, setPlayers] = useState([]);
   const [currentTurn, setCurrentTurn] = useState("");
@@ -56,19 +57,29 @@ function App() {
 
 
   useEffect(() => {
-    if (mode === "multi") {
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
-      // Crea la connessione a Socket.IO solo una volta quando il componente si monta
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mode === "multi") {
       const newSocket = io('https://ciapachinze.onrender.com');
       //const newSocket = io('http://localhost:3000');
 
       setSocket(newSocket);
-  
-      newSocket.emit('joinRoom', room);
-  
+      
+      newSocket.emit("getRooms")
+      
+      newSocket.on('getRooms', (rooms) => {
+        console.debug(rooms)
+        setRooms(rooms)
+      });
+
       newSocket.on('yourID', (id) => {
         newSocket.emit('playerID', id);
-  
         setPlayerID(id.replaceAll("-", ""));
       });
   
@@ -86,12 +97,9 @@ function App() {
       });
       
       newSocket.on('playerMove', (played_card, cards_taken, newTable) => {
-        //console.log('Mossa ricevuta dall\'avversario: carte prese:', cards_taken);
-        //console.debug("LAST OPPP MOVE:", played_card, cards_taken)
-
         if (played_card.code) {
           setOpponentPlayedCards((lastPlayedCards) => {
-            if (lastPlayedCards.length+1 < 3)
+            if (lastPlayedCards.length+1 <= 3)
               return [...lastPlayedCards, played_card]
             else return lastPlayedCards
           })
@@ -119,8 +127,6 @@ function App() {
       });
   
       newSocket.on('dealCards', (table_cards, remaining) => {
-        //console.log("L'avversario ha dato le carte:", table_cards);
-        
         setTable(table_cards);
         setRemaining(remaining)
       });
@@ -129,14 +135,16 @@ function App() {
         setOpponentScope(opponent_scope)
       });
 
-      newSocket.on('playerScore', (cards, diamonds, scope) => {
+      newSocket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande) => {
         setOpponentFinalScore({
           cards: cards,
           diamonds: diamonds,
-          scope: scope
+          scope: scope,
+          settebello: settebello,
+          piccola: piccola,
+          grande: grande
         })
       });
-
   
       // Funzione di pulizia: disconnetti il socket quando il componente si smonta
       return () => {
@@ -155,16 +163,12 @@ function App() {
         newSocket.disconnect();
       };
     }
-  }, [room])
-
+  }, [mode])
 
   useEffect(() => {
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, []);
+    if (socket)
+      socket.emit('joinRoom', room);
+  }, [room])
 
   useEffect(() => {
     console.debug("Selected card:", selectedCard)
@@ -199,20 +203,14 @@ function App() {
   }, [scope]);
 
   useEffect(() => {
-    if (remaining <= 0 && hand.length === 0 && opponentsHand === 0 && !gameIsOver) {
-      window.alert("Game is over!")
+    if (remaining <= 0 && hand.length === 0 && opponentsHand === 0 && !gameIsOver)
       setGameIsOver(true)
-    }
   }, [remaining, hand, opponentsHand]);
 
   useEffect(() => {
     if (gameIsOver)
       computeScore()
   }, [gameIsOver]);
-
-  useEffect(() => {
-    console.debug("last to take?", isLastToTake)
-  }, [isLastToTake]);
   
 
   const endTurn = () => {
@@ -276,8 +274,9 @@ function App() {
         if (data.cards) {
           setHand((prevHand) => [...prevHand, ...data.cards]);
           setRemaining(data.remaining)
-  
-          if (resetOpponentHand)
+
+          // se è il giocatore 1 resetto sempre
+          if (resetOpponentHand || players[0].replaceAll("-", "") == playerID)
             setOpponentPlayedCards([])
           else
             setResetOpponentHand(true)
@@ -383,8 +382,6 @@ function App() {
     }
     // fine gestione asso
 
-
-
     if (selectedTableCard.length > 0) {
       const cardsTaken = selectedCard+","+selectedTableCard.join(",")
       const cardsTakenArray = cardsTaken.split(",")
@@ -454,32 +451,59 @@ function App() {
   
         //compute diamonds
         let diamonds = 0
+        let settebello = false
+        let piccola = false
+        let grande = false
         for (const card of pile) {
-          if (card.code[0] === "D")
+          if (card.code === "7D")
+            settebello = true
+          if (card.code[1] === "D")
             diamonds++
         }
-  
+        
+        const grandeCondition = ["QD", "JD", "KD"]
+        grande = grandeCondition.every(condition => pile.some(card => card.code === condition))
+
+        const piccolaCondition = ["AD", "2D", "3D", "4D", "5D", "6D", "7D"]
+        let ind = -1
+        for (let i = 0; i < piccolaCondition.length; i++) {
+            const condition = piccolaCondition[i]
+            const match = pile.some(card => card.code === condition)
+
+          if (!match)
+              break
+          ind = i
+        }
+
+        piccola = ind >= 2 ? ind : false
+
         setFinalScore({
           cards: pile.length,
           diamonds: diamonds,
-          scope: scope
+          scope: scope,
+          settebello: settebello,
+          piccola: piccola,
+          grande: grande
         })
   
-        socket.emit("playerScore", pile.length, diamonds, scope, room)
+        socket.emit("playerScore", pile.length, diamonds, scope, settebello, piccola, grande, room)
       }
       else {
         setFinalScore({
           cards: 0,
           diamonds: 0,
-          scope: 0
+          scope: 0,
+          settebello: false,
+          piccola: false,
+          grande: false
         })
   
-        socket.emit("playerScore", 0, 0, 0, room)
+        socket.emit("playerScore", 0, 0, 0, false, false, false, room)
       }
 
+      window.alert("Game is over!")
     });
   }
-
 
 
   return (
@@ -487,11 +511,22 @@ function App() {
       
       {!mode &&
         <>
-          <JoinRoomForm
-            setRoom={setRoom}
-            setMode={setMode}
-          />
+          <br/>
+
+          <button onClick={() => setMode("multi")}>Play!</button>
+
+          <br/>
+          <br/>
+
+          <a href='https://it.wikipedia.org/wiki/Cirulla' target='_blank'>Click me to check the rules</a>
         </>
+      }
+
+      {(mode && !room) &&
+        <JoinRoomForm
+          setRoom={setRoom}
+          rooms={rooms}
+        />
       }
 
       {gameIsOver &&
@@ -503,7 +538,7 @@ function App() {
 
       {!gameIsOver &&
         <>
-          {playerID &&
+          {(playerID && room) &&
             <>
               <p>Room: {room}</p>
               {/*<p>Your ID is: {playerID}</p>*/}
@@ -526,7 +561,6 @@ function App() {
               {isMyTurn ? (
                 <div>
                   <h3>It's your turn!</h3>
-                  {/*<button onClick={() => endTurn()}>Termina turno</button>*/}
                 </div>
               ) : (
                 <h3>Waiting for the opponent...</h3>

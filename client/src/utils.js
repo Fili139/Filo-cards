@@ -29,7 +29,7 @@ export const checkLess10 = (cards) => {
   for (const card of cards)
     sum += parseInt(getValueOfCard(card.code))
 
-  return sum <= 10
+  return sum <= 9
 }
 
 export const handleBeforeUnload = (e) => {
