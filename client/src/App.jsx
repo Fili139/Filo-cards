@@ -66,8 +66,8 @@ function App() {
 
   useEffect(() => {
     if (mode === "multi") {
-      const newSocket = io('https://ciapachinze.onrender.com');
-      //const newSocket = io('http://localhost:3000');
+      //const newSocket = io('https://ciapachinze.onrender.com');
+      const newSocket = io('http://localhost:3000');
 
       setSocket(newSocket);
       
@@ -558,9 +558,9 @@ function App() {
               */}
 
               { isMyTurn ? <h3>It's your turn!</h3> : <h3>Waiting for the opponent...</h3> }
-              { !deck && players.map(player => {
+              { !deck && players.map((player, key) => {
                 return (
-                  <li>
+                  <li key={key}>
                     {player} {player.replaceAll("-", "") === playerID ? '(you)' : ''}
                   </li>  
                 )

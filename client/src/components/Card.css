@@ -28,6 +28,8 @@
 
 .card-table-image:hover, .card-hand-image:hover {
   cursor: pointer;
+  transform: translateY(-1rem) scale(1.05);
+  /*box-shadow: 0 8px 12px rgba(0,0,0,0.2);*/
 }
 
 .card-value {
@@ -35,5 +37,7 @@
 }
 
 .card-selected {
-  border: 0.5vh solid gold;
+  /*border: 0.5vh solid gold;*/
+  transform: translateY(-1rem) scale(1.05);
+  box-shadow: 0 0 1rem rgba(255, 215, 0, 0.8);
 }

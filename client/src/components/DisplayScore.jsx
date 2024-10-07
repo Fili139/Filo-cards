@@ -14,6 +14,8 @@ const DisplayScore = ({ finalScore, opponentFinalScore }) => {
                 <br/>
                 Scope: {finalScore.scope}
                 <br/>
+                Sette bello: {finalScore.settebello ? "si" : "no"}
+                <br/>
                 Piccola: {finalScore.piccola ? finalScore.piccola : "no"}
                 <br/>
                 Grande: {finalScore.grande ? finalScore.grande : "no"}
@@ -31,9 +33,11 @@ const DisplayScore = ({ finalScore, opponentFinalScore }) => {
                 <br/>
                 Scope: {opponentFinalScore.scope}
                 <br/>
+                Sette bello: {opponentFinalScore.settebello ? "si" : "no"}
+                <br/>
                 Piccola: {opponentFinalScore.piccola ? opponentFinalScore.piccola : "no"}
                 <br/>
-                Grande: {opponentFinalScore.grande ? opponentFinalScore.grande : "no"}
+                Grande: {opponentFinalScore.grande ? "si" : "no"}
             </div>
 
             <br/>
