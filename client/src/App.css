@@ -24,6 +24,7 @@
 .dots::after {
   content: '';
   display: inline-block;
+  width: 1.5em; /* Mantiene la larghezza fissa */
   text-align: left;
   animation: dots 2.5s steps(3, end) infinite;
 }

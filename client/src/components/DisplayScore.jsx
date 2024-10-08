@@ -15,7 +15,7 @@ const DisplayScore = ({ finalScore, opponentFinalScore }) => {
                 case 'primiera':
                     if (finalScore[key] > opponentFinalScore[key])
                         totalScore++
-                    else
+                    else if (opponentFinalScore[key] > finalScore[key])
                         opponentTotalScore++
 
                     console.debug(key, totalScore, opponentTotalScore)

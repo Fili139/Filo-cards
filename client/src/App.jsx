@@ -16,7 +16,7 @@ import Table from './components/Table'
 
 function App() {
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
-  //const deckCards = "AS,AD,3D,KH,2D,2C,2H,3S,4D,7D";
+  //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
 
   const [gameIsOver, setGameIsOver] = useState(false);
 
@@ -115,8 +115,8 @@ function App() {
         setOpponentPlayedCards(cards)
       });
 
-      newSocket.on('is15or30', () => {
-        setTable([])
+      newSocket.on('is15or30', (remaining) => {
+        setRemaining(remaining)
       });
 
       newSocket.on('playerDraw', (count, remaining) => {
@@ -166,6 +166,9 @@ function App() {
   
         newSocket.disconnect();
       };
+    }
+    else {
+      getDeck()
     }
   }, [mode])
 
@@ -222,14 +225,16 @@ function App() {
   
 
   const endTurn = () => {
-    if (isMyTurn)
+    if (isMyTurn && socket)
       socket.emit('endTurn', room);
   };
 
   const getDeck = async () => {
-    const playerCount = await fetchPlayersInRoom()
+    let playerCount = 0
+    if (mode === "multi")
+      playerCount = await fetchPlayersInRoom()
 
-    if (playerCount === 2) {
+    if (playerCount === 2 || mode === "single") {
       fetch("https://www.deckofcardsapi.com/api/deck/new/shuffle/?cards="+deckCards)
       .then((res) => res.json())
       .then(async (data) => {
@@ -237,7 +242,8 @@ function App() {
           setDeck(data.deck_id)
           
           await dealCards(4, data.deck_id)
-          socket.emit('deckID', data.deck_id, room);
+
+          if (mode === "multi") socket.emit('deckID', data.deck_id, room);
 
           setCardsDealt(true)
         }
@@ -262,15 +268,15 @@ function App() {
           else if (is15or30 == 30)
             setScope(prev => prev+2)
 
-          const tableCards = table.map(card => card.code);
-          const tableCardsTaken = selectedCard+","+tableCards.join(",")
+          const tableCards = data.cards.map(card => card.code);
+          const tableCardsTaken = tableCards.join(",")
 
-          socket.emit('is15or30', room)
+          if (mode === "multi") socket.emit('is15or30', data.remaining, room)
 
           await addToPile(tableCardsTaken, tableCards, deckID)
         }
-
-        socket.emit('dealCards', data.cards, data.remaining, room);
+        else
+          if (mode === "multi") socket.emit('dealCards', data.cards, data.remaining, room);
       }
     })
   }
@@ -285,22 +291,22 @@ function App() {
           setRemaining(data.remaining)
 
           // se è il giocatore 1 resetto sempre
-          if (resetOpponentHand || players[0].replaceAll("-", "") == playerID)
+          if (resetOpponentHand || players[1].replaceAll("-", "") == playerID)
             setOpponentPlayedCards([])
           else
             setResetOpponentHand(true)
           
           if (checkTris(data.cards)) {
             setScope(prev => prev+10)
-            socket.emit('trisOrLess10', data.cards, room)
+            if (mode === "multi") socket.emit('trisOrLess10', data.cards, room)
           }
   
           if (checkLess10(data.cards)) {
             setScope(prev => prev+3)
-            socket.emit('trisOrLess10', data.cards, room)
+            if (mode === "multi") socket.emit('trisOrLess10', data.cards, room)
           }
   
-          socket.emit('playerDraw', count, data.remaining, room);
+          if (mode === "multi") socket.emit('playerDraw', count, data.remaining, room);
         }
       })
     }
@@ -326,7 +332,7 @@ function App() {
         setSelectedCard("")
         setSelectedTableCard([])
 
-        socket.emit('playerMove', {code: selectedCard}, cardsTaken, newTable, room);
+        if (mode === "multi") socket.emit('playerMove', {code: selectedCard}, cardsTaken, newTable, room);
 
         setIsLastToTake(true)
 
@@ -347,7 +353,7 @@ function App() {
     setSelectedCard("")
     setTable((prevTable) => [...prevTable, ...playedCard]);
 
-    socket.emit('playerMove', playedCard[0], "", newTable, room);
+    if (mode === "multi") socket.emit('playerMove', playedCard[0], "", newTable, room);
 
     // la mossa è sempre valida
     return true;
@@ -528,7 +534,8 @@ function App() {
         <>
           <br/>
 
-          <button onClick={() => setMode("multi")}>Play!</button>
+          <button onClick={() => setMode("single")}>Play offline</button>
+          <button onClick={() => setMode("multi")}>Play online</button>
 
           <br/>
           <br/>
@@ -537,14 +544,14 @@ function App() {
         </>
       }
 
-      {(mode && !room) &&
+      {(mode === "multi" && !room) &&
         <JoinRoomForm
           setRoom={setRoom}
           rooms={rooms}
         />
       }
 
-      {gameIsOver &&
+      {(gameIsOver && Object.keys(finalScore).length > 0 && Object.keys(opponentFinalScore).length > 0) &&
         <DisplayScore
           finalScore={finalScore}
           opponentFinalScore={opponentFinalScore}
@@ -631,7 +638,7 @@ function App() {
           }
 
           {hand.length > 0 &&
-            <>
+            <div>
               <p>Player's hand</p>
               <Hand
                 cards={hand}
@@ -653,11 +660,12 @@ function App() {
                   </button>
                 </>
               }
-            </>
+            </div>
           }
 
           {deck &&
             <div>
+              <br/>
               Scope: {scope}
               <br/>
               Opponent's scope: {opponentScope}

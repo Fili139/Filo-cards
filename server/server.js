@@ -127,8 +127,8 @@ io.on('connection', (socket) => {
         socket.to(room).emit('trisOrLess10', cards);
     });
 
-    socket.on('is15or30', (room) => {
-        socket.to(room).emit('is15or30');
+    socket.on('is15or30', (remaining, room) => {
+        socket.to(room).emit('is15or30', remaining);
     });
 
     socket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande, primiera, room) => {
