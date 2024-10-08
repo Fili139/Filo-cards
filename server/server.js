@@ -88,20 +88,20 @@ io.on('connection', (socket) => {
 
     // Invio deck id generato da giocatore
     socket.on('deckID', (deck_id, room) => {
-        console.log(`Il giocatore: ${socket.id}`, "ha generato un deck con id:", deck_id, "inoltro...");
+        //console.log(`Il giocatore: ${socket.id}`, "ha generato un deck con id:", deck_id, "inoltro...");
         
         socket.to(room).emit('deckID', deck_id);
     });
 
     // Gestione di messaggi tra i giocatori
     socket.on('playerMove', (played_card, cards_taken, newTable, room) => {
-        console.log(`Mossa del giocatore: ${socket.id}`, "ha preso:", cards_taken);
+        //console.log(`Mossa del giocatore: ${socket.id}`, "ha preso:", cards_taken);
         
         socket.to(room).emit('playerMove', played_card, cards_taken, newTable);
     });
 
     socket.on('playerDraw', (count, remaining, room) => {
-        console.log(`Il giocatore: ${socket.id} ha pescato:`, count, ", carte rimanenti: ", remaining);
+        //console.log(`Il giocatore: ${socket.id} ha pescato:`, count, ", carte rimanenti: ", remaining);
         
         socket.to(room).emit('playerDraw', count, remaining);
     });
@@ -112,19 +112,23 @@ io.on('connection', (socket) => {
 
     // Gestione di messaggi tra i giocatori
     socket.on('dealCards', (table_cards, remaining, room) => {
-        console.log(`Il giocatore: ${socket.id}`, "ha dato le carte, rimanenti:", remaining);
+        //console.log(`Il giocatore: ${socket.id}`, "ha dato le carte, rimanenti:", remaining);
         
         socket.to(room).emit('dealCards', table_cards, remaining);
     });
 
     socket.on('scopeUpdate', (scope, room) => {
-        console.log(`Il giocatore: ${socket.id}`, "ha fatto:", scope, "scopa/e");
+        //console.log(`Il giocatore: ${socket.id}`, "ha fatto:", scope, "scopa/e");
         
         socket.to(room).emit('scopeUpdate', scope);
     });
 
     socket.on('trisOrLess10', (cards, room) => {
         socket.to(room).emit('trisOrLess10', cards);
+    });
+
+    socket.on('is15or30', (room) => {
+        socket.to(room).emit('is15or30');
     });
 
     socket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande, primiera, room) => {

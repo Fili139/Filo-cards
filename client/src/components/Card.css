@@ -1,7 +1,7 @@
 .card-table-image {
-  height: 14vh;
+  	height: 14vh;
 
-  opacity: 1;
+  	opacity: 1;
 	animation-name: fadeInOpacity;
 	animation-iteration-count: 1;
 	animation-timing-function: ease-in;
@@ -9,29 +9,32 @@
 }
 
 .card-hand-image {
-  height: 13vh;
+  	height: 13vh;
 
-  opacity: 1;
+  	opacity: 1;
 	animation-name: fadeInOpacity;
 	animation-iteration-count: 1;
 	animation-timing-function: ease-in;
 	animation-duration: 1s;
 }
 
-.card-table-image:hover, .card-hand-image:hover {
-  cursor: pointer;
-  transform: translateY(-1rem) scale(1.05);
-  /*box-shadow: 0 8px 12px rgba(0,0,0,0.2);*/
+/* Stili per schermi non tattili */
+@media (hover: hover) {
+	.card-table-image:hover, .card-hand-image:hover {
+		cursor: pointer;
+		transform: translateY(-1rem) scale(1.05);
+		/*box-shadow: 0 8px 12px rgba(0,0,0,0.2);*/
+	}
 }
 
 .card-value {
-  font-weight: bold;
+  	font-weight: bold;
 }
 
 .card-selected {
-  /*border: 0.5vh solid gold;*/
-  transform: translateY(-1rem) scale(1.05);
-  box-shadow: 0 0 1rem rgba(255, 215, 0, 0.8);
+	/*border: 0.5vh solid gold;*/
+	transform: translateY(-1rem) scale(1.05);
+	box-shadow: 0 0 1rem rgba(255, 215, 0, 0.8);
 }
 
 @keyframes fadeInOpacity {

@@ -16,7 +16,7 @@ import Table from './components/Table'
 
 function App() {
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
-  //const deckCards = "AS,AD,3D,KH,2D,2C,2H,3S,4D,3C";
+  //const deckCards = "AS,AD,3D,KH,2D,2C,2H,3S,4D,7D";
 
   const [gameIsOver, setGameIsOver] = useState(false);
 
@@ -115,6 +115,10 @@ function App() {
         setOpponentPlayedCards(cards)
       });
 
+      newSocket.on('is15or30', () => {
+        setTable([])
+      });
+
       newSocket.on('playerDraw', (count, remaining) => {
         console.log("L'avversario ha pescato:", count, "carte rimanenti nel mazzo:", remaining);
 
@@ -203,6 +207,10 @@ function App() {
   }, [scope]);
 
   useEffect(() => {
+    endTurn()
+  }, [cardsDealt]);
+
+  useEffect(() => {
     if (remaining <= 0 && hand.length === 0 && opponentsHand === 0 && !gameIsOver)
       setGameIsOver(true)
   }, [remaining, hand, opponentsHand]);
@@ -238,7 +246,6 @@ function App() {
   }
 
   const dealCards = async (count=4, deckID) => {
-    //todo - controllare se ci sono abbastanza carte per pescare
     fetch("https://www.deckofcardsapi.com/api/deck/"+deckID+"/draw/?count="+count)
     .then((res) => res.json())
     .then(async (data) => {
@@ -257,6 +264,8 @@ function App() {
 
           const tableCards = table.map(card => card.code);
           const tableCardsTaken = selectedCard+","+tableCards.join(",")
+
+          socket.emit('is15or30', room)
 
           await addToPile(tableCardsTaken, tableCards, deckID)
         }
@@ -452,9 +461,12 @@ function App() {
         //compute diamonds
         let diamonds = 0
         let settebello = false
+
         let piccola = false
         let grande = false
+
         let primiera = 0
+
         for (const card of pile) {
           if (card.code === "7D")
             settebello = true
@@ -543,7 +555,7 @@ function App() {
         <>
           {(playerID && room) &&
             <>
-              <p>Room: {room}</p>
+              <p className='room'>Room: {room}</p>
               {/*<p>Your ID is: {playerID}</p>*/}
             </>
           }
@@ -561,7 +573,7 @@ function App() {
                 </ul>
               */}
 
-              { isMyTurn ? <h3>It's your turn!</h3> : <h3>Waiting for the opponent...</h3> }
+              { isMyTurn ? <h3 className='turn-message'>It's your turn!</h3> : <h3 className='wait-message dots'>Waiting for the opponent</h3> }
               { !deck && players.map((player, key) => {
                 return (
                   <li key={key}>

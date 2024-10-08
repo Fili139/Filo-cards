@@ -19,6 +19,7 @@ const JoinRoomForm = ({ setRoom, setMode, rooms }) => {
                 <input type="text" placeholder="Room name" {...register("room", { required: "This field is required" })} />
 
                 <br/>
+                <br/>
 
                 <button type="submit">Join room</button>
             </form>
