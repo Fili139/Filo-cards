@@ -77,4 +77,14 @@ export const grandeCondition = ["QD", "JD", "KD"];
 
 export const piccolaCondition = ["AD", "2D", "3D", "4D", "5D", "6D", "7D"];
 
-export default { handleBeforeUnload, getValueOfCard, check15or30, checkTris, checkLess10, computePrimiera, grandeCondition, piccolaCondition };
+export const getRandomIntInclusive = (min, max) => {
+  const minCeiled = Math.ceil(min);
+  const maxFloored = Math.floor(max);
+
+  const randomNumber = Math.floor(Math.random() * (maxFloored - minCeiled + 1) + minCeiled);
+
+  return randomNumber// The maximum is inclusive and the minimum is inclusive
+}
+
+
+export default { handleBeforeUnload, getValueOfCard, check15or30, checkTris, checkLess10, computePrimiera, getRandomIntInclusive, grandeCondition, piccolaCondition };

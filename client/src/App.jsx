@@ -4,7 +4,7 @@ import { useBaseState } from './utils/useBaseState'
 import { useOfflineState } from './utils/useOfflineState'
 import { useOnlineState } from './utils/useOnlineState'
 import { useBeforeUnloadEffect } from './utils/useBeforeUnloadEffect'
-import { getValueOfCard, checkTris, checkLess10, check15or30, grandeCondition, piccolaCondition, computePrimiera } from './utils/utils'
+import { getValueOfCard, checkTris, checkLess10, check15or30, grandeCondition, getRandomIntInclusive, piccolaCondition, computePrimiera } from './utils/utils'
 
 import io from 'socket.io-client'
 
@@ -18,6 +18,8 @@ import './App.css'
 
 
 function App() {
+  const server = "https://ciapachinze.onrender.com"; //http://localhost:3000
+
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
   //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
 
@@ -80,7 +82,8 @@ function App() {
   } = useOnlineState();
 
   const {
-
+    botHand,
+    setBotHand
   } = useOfflineState();
 
 
@@ -89,15 +92,35 @@ function App() {
 
   /* BOT LOGIC */
   useEffect(() => {
-    if (mode === "single" && !deck)
-      getDeck()
+    const getDeckOffline = async () => { await getDeck(); setCardsDealt(true) }
+
+    if (mode === "single" && !deck) getDeckOffline()
   }, [mode])
 
   useEffect(() => {
+    const botDraw = async () => { await botDrawCards() }
+
+    const botMove = async () => { await botMakeMove() }
+
     if (!isMyTurn && mode === "single") {
-      if (opponentsHand <= 0) {
-        console.debug("Sono il bot, dovrei pescare")
-      }
+      
+
+        if (botHand.length <= 0) {
+          if (cardsDealt) {
+            setTimeout(() => {
+              botDraw()
+              setIsMyTurn(true)
+            }, getRandomIntInclusive(700, 1500))
+          }
+          else
+            setIsMyTurn(true)
+        }
+        else {
+          setTimeout(() => {
+            botMove()
+            setIsMyTurn(true)
+          }, getRandomIntInclusive(1000, 2000))
+        }  
     }
   }, [isMyTurn])
   /* END BOT LOGIC */
@@ -105,8 +128,7 @@ function App() {
 
   useEffect(() => {
     if (mode === "multi") {
-      const newSocket = io('https://ciapachinze.onrender.com');
-      //const newSocket = io('http://localhost:3000');
+      const newSocket = io(server);
 
       setSocket(newSocket);
       
@@ -232,6 +254,10 @@ function App() {
   }, [hand])
 
   useEffect(() => {
+    console.debug("Bot hand:", botHand)
+  }, [botHand])
+
+  useEffect(() => {
     if (table.length > 0)
       console.debug("Table:", table)
 
@@ -248,7 +274,8 @@ function App() {
   }, [scope]);
 
   useEffect(() => {
-    endTurn()
+    if (mode === "multi")
+      endTurn()
   }, [cardsDealt]);
 
   useEffect(() => {
@@ -338,10 +365,10 @@ function App() {
           setRemaining(data.remaining)
 
           // se è il giocatore 1 resetto sempre
-          if (resetOpponentHand || players[1].replaceAll("-", "") == playerID)
-            setOpponentPlayedCards([])
-          else
-            setResetOpponentHand(true)
+            if (resetOpponentHand || (mode === "multi" && players[1].replaceAll("-", "") == playerID))
+              setOpponentPlayedCards([])
+            else
+              setResetOpponentHand(true)
           
           if (checkTris(data.cards)) {
             setScope(prev => prev+10)
@@ -362,10 +389,12 @@ function App() {
   }
 
   const addToPile = async (cardsTaken, selectedTableCards, deck_id=deck) => {
-    return fetch("https://www.deckofcardsapi.com/api/deck/"+deck_id+"/pile/"+playerID+"_pile/add/?cards="+cardsTaken)
+    let pile_name = playerID ? playerID : "player_"+deck_id;
+
+    return fetch("https://www.deckofcardsapi.com/api/deck/"+deck_id+"/pile/"+pile_name+"_pile/add/?cards="+cardsTaken)
     .then((res) => res.json())
     .then(async (data) => {
-      if (data.piles[playerID+"_pile"]) {
+      if (data.piles[pile_name+"_pile"]) {
 
         const newTable = table.filter(x => !selectedTableCards.includes(x.code))
 
@@ -478,9 +507,8 @@ function App() {
       return await addToPile(cardsTaken, selectedTableCard)
 
     }
-    else {
+    else
       return addCardToTable()
-    }
   }
 
   const getPlayersInRoom = () => {
@@ -579,6 +607,111 @@ function App() {
   }
 
 
+  /* BOT FUNCTIONS */
+  const botDrawCards = async (count=3) => {
+    if (remaining-count >= 0) {
+
+      await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/draw/?count="+count)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.cards) {
+
+          setBotHand((prevHand) => [...prevHand, ...data.cards]);
+          setRemaining(data.remaining)
+
+          if (checkTris(data.cards)) {
+            setOpponentScope(prev => prev+10)
+            setOpponentPlayedCards(data.cards)
+            setResetOpponentHand(false)
+          }
+  
+          if (checkLess10(data.cards)) {
+            setOpponentScope(prev => prev+3)
+            setOpponentPlayedCards(data.cards)
+            setResetOpponentHand(false)
+          }
+        }
+      })
+    }
+  }
+
+  const botAddCard = (botSelectedCard) => {
+    setBotHand(
+      botHand.filter(x => x.code != botSelectedCard)
+    )
+
+    const playedCard = botHand.filter(x => x.code == botSelectedCard)
+
+    setTable((prevTable) => [...prevTable, ...playedCard]);
+
+    // la mossa è sempre valida
+    return true;
+  }
+
+  const botTakeCard = async (botSelectedCard) => {
+    let cardsTaken = botSelectedCard
+    const botSelectedTableCard = []
+
+    let moveIsValid = false
+
+    for (const card of table) {
+      if (getValueOfCard(card.code) === getValueOfCard(botSelectedCard)) {
+        cardsTaken += ","+card.code
+
+        botSelectedTableCard.push(card.code)
+
+        moveIsValid = true
+        break
+      }
+    }
+
+    if (!moveIsValid)
+      return false
+
+    return await botAddToPile(cardsTaken, botSelectedTableCard)
+  }
+
+  const botAddToPile = async (cardsTaken, selectedTableCards) => {
+    return fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/pile/bot_"+deck+"_pile/add/?cards="+cardsTaken)
+    .then((res) => res.json())
+    .then(async (data) => {
+      if (data.piles["bot_"+deck+"_pile"]) {
+
+        const newTable = table.filter(x => !selectedTableCards.includes(x.code))
+
+        if (newTable.length == 0)
+          setOpponentScope(prev => prev+1)
+
+        const cardsTakenArray = cardsTaken.split(",")
+        const botSelectedCard = cardsTakenArray.shift()
+
+        setBotHand(
+          botHand.filter(x => x.code != botSelectedCard)
+        )
+
+        setTable(newTable)
+
+        setIsLastToTake(false)
+
+        return true;
+      }
+    })
+  }
+
+  const botMakeMove = async () => {
+    const hasBotTaken = await botTakeCard(botHand[0].code)
+    if (!hasBotTaken)
+      botAddCard(botHand[0].code)
+
+    setOpponentPlayedCards((lastPlayedCards) => {
+      if (lastPlayedCards.length+1 <= 3)
+        return [...lastPlayedCards, botHand[0]]
+      else return lastPlayedCards
+    })
+  } 
+  /* END BOT FUNCTIONS */
+
+
   return (
     <div className="app">
       
@@ -642,6 +775,13 @@ function App() {
 
           {deck &&
             <>
+
+              {mode === "single" &&
+                <>
+                  { isMyTurn ? <h3 className='turn-message'>It's your turn!</h3> : <h3 className='wait-message dots'>Waiting for the opponent</h3> }
+                </>
+              }
+
               <OpponentHand
                 playedCards={opponentPlayedCards}
               />
