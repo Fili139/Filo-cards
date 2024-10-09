@@ -1,68 +1,107 @@
 import { useState, useEffect } from 'react'
 
+import { useBaseState } from './utils/useBaseState'
+import { useOfflineState } from './utils/useOfflineState'
+import { useOnlineState } from './utils/useOnlineState'
+import { useBeforeUnloadEffect } from './utils/useBeforeUnloadEffect'
+import { getValueOfCard, checkTris, checkLess10, check15or30, grandeCondition, piccolaCondition, computePrimiera } from './utils/utils'
+
+import io from 'socket.io-client'
+
 import Hand from './components/Hand'
-import Deck from './components/Deck'
+import Table from './components/Table'
 import OpponentHand from './components/OpponentHand'
 import JoinRoomForm from './components/JoinRoomForm'
 import DisplayScore from './components/DisplayScore'
 
-import { handleBeforeUnload, getValueOfCard, checkTris, checkLess10, check15or30, grandeCondition, piccolaCondition, computePrimiera } from './utils'
-
-import io from 'socket.io-client'
-
 import './App.css'
-import Table from './components/Table'
 
 
 function App() {
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
   //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
 
-  const [gameIsOver, setGameIsOver] = useState(false);
+  const {
+    mode,
+    setMode,
+    gameIsOver,
+    setGameIsOver,
+    isMyTurn,
+    setIsMyTurn,
+    cardsDealt,
+    setCardsDealt,
+    deck,
+    setDeck,
+    hand,
+    setHand,
+    table,
+    setTable,
+    remaining,
+    setRemaining,
+    opponentsHand,
+    setOpponentsHand,
+    opponentPlayedCards,
+    setOpponentPlayedCards,
+    resetOpponentHand,
+    setResetOpponentHand,
+    selectedCard,
+    setSelectedCard,
+    selectedTableCard,
+    setSelectedTableCard,
+    scope,
+    setScope,
+    opponentScope,
+    setOpponentScope,
+    finalScore,
+    setFinalScore,
+    opponentFinalScore,
+    setOpponentFinalScore,
+    isLastToTake,
+    setIsLastToTake,
+    canDraw,
+    setCanDraw,
+    canPlay,
+    setCanPlay
+  } = useBaseState();
 
-  const [socket, setSocket] = useState(null);
+  const {
+    socket,
+    setSocket,
+    room,
+    setRoom,
+    rooms,
+    setRooms,
+    players,
+    setPlayers,
+    currentTurn,
+    setCurrentTurn,
+    playerID,
+    setPlayerID
+  } = useOnlineState();
 
-  const [room, setRoom] = useState("");
-  const [rooms, setRooms] = useState([]);
+  const {
 
-  const [players, setPlayers] = useState([]);
-  const [currentTurn, setCurrentTurn] = useState("");
-  const [isMyTurn, setIsMyTurn] = useState(false);
+  } = useOfflineState();
 
-  const [playerID, setPlayerID] = useState("");
+
+  useBeforeUnloadEffect();
   
-  const [cardsDealt, setCardsDealt] = useState(false);
 
-  const [mode, setMode] = useState(""); 
-
-  const [deck, setDeck] = useState("");
-  const [hand, setHand] = useState([]);
-  const [table, setTable] = useState([]);
-  const [remaining, setRemaining] = useState(52);
-  
-  const [opponentsHand, setOpponentsHand] = useState(0);
-  const [opponentPlayedCards, setOpponentPlayedCards] = useState([]);
-  const [resetOpponentHand, setResetOpponentHand] = useState(true);
-
-  const [selectedCard, setSelectedCard] = useState("");
-  const [selectedTableCard, setSelectedTableCard] = useState([]);
-  
-  const [scope, setScope] = useState(0);
-  const [opponentScope, setOpponentScope] = useState(0);
-
-  const [finalScore, setFinalScore] = useState({});
-  const [opponentFinalScore, setOpponentFinalScore] = useState({});
-
-  const [isLastToTake, setIsLastToTake] = useState(false);
-
+  /* BOT LOGIC */
+  useEffect(() => {
+    if (mode === "single" && !deck)
+      getDeck()
+  }, [mode])
 
   useEffect(() => {
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, []);
+    if (!isMyTurn && mode === "single") {
+      if (opponentsHand <= 0) {
+        console.debug("Sono il bot, dovrei pescare")
+      }
+    }
+  }, [isMyTurn])
+  /* END BOT LOGIC */
+    
 
   useEffect(() => {
     if (mode === "multi") {
@@ -106,6 +145,8 @@ function App() {
 
         if (cards_taken)
           setIsLastToTake(false)
+
+        setSelectedTableCard([])
 
         setTable(newTable)
       });
@@ -167,9 +208,6 @@ function App() {
         newSocket.disconnect();
       };
     }
-    else {
-      getDeck()
-    }
   }, [mode])
 
   useEffect(() => {
@@ -222,11 +260,17 @@ function App() {
     if (gameIsOver)
       computeScore()
   }, [gameIsOver]);
-  
+
 
   const endTurn = () => {
-    if (isMyTurn && socket)
-      socket.emit('endTurn', room);
+    if (mode === "multi") {
+      if (isMyTurn && socket)
+        socket.emit('endTurn', room);
+    }
+    else if (mode === "single") {
+      if (isMyTurn)
+        setIsMyTurn(false)
+    }
   };
 
   const getDeck = async () => {
@@ -283,6 +327,9 @@ function App() {
 
   const drawCards = async (count=3) => {
     if (remaining-count >= 0) {
+
+      setCanDraw(false)
+
       await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/draw/?count="+count)
       .then((res) => res.json())
       .then((data) => {
@@ -307,6 +354,8 @@ function App() {
           }
   
           if (mode === "multi") socket.emit('playerDraw', count, data.remaining, room);
+
+          setCanDraw(true)
         }
       })
     }
@@ -360,6 +409,9 @@ function App() {
   }
 
   const playerMove = async () => {
+    
+    setCanPlay(false)
+
     let moveIsValid = false;
 
     // gestione asso
@@ -535,6 +587,7 @@ function App() {
           <br/>
 
           <button onClick={() => setMode("single")}>Play offline</button>
+          {" "}
           <button onClick={() => setMode("multi")}>Play online</button>
 
           <br/>
@@ -563,24 +616,9 @@ function App() {
           {(playerID && room) &&
             <>
               <p className='room'>Room: {room}</p>
-              {/*<p>Your ID is: {playerID}</p>*/}
-            </>
-          }
-
-          {room &&
-            <>
-              {/*
-                <p>Giocatori connessi nella room {room}:</p>
-                <ul>
-                  {players.map((player) => (
-                    <li key={player} style={{ fontWeight: player === currentTurn ? 'bold' : 'normal' }}>
-                      {player} {player === currentTurn ? '(di turno)' : ''}
-                    </li>
-                  ))}
-                </ul>
-              */}
 
               { isMyTurn ? <h3 className='turn-message'>It's your turn!</h3> : <h3 className='wait-message dots'>Waiting for the opponent</h3> }
+
               { !deck && players.map((player, key) => {
                 return (
                   <li key={key}>
@@ -608,17 +646,12 @@ function App() {
                 playedCards={opponentPlayedCards}
               />
 
-              {/*
-                <Deck 
-                  remaining={remaining}
-                />
-              */}
-
               <div>
                 Cards remaining: {remaining}
               </div>
 
               <p>Table</p>
+
               <Table
                 cards={table}
                 selectedTableCard={selectedTableCard}
@@ -630,7 +663,7 @@ function App() {
           {(deck && hand.length <= 0 && isMyTurn) &&
             <>
               <br/>
-              <button onClick={async () => {
+              <button disabled={!canDraw} onClick={async () => {
                 await drawCards()
                 endTurn()
               }}>Draw cards</button>
@@ -649,12 +682,15 @@ function App() {
               {(selectedCard && isMyTurn) &&
                 <>
                   <br/>
-                  <button onClick={async () => {
+                  <button disabled={!canPlay} onClick={async () => {
                     const moveIsValid = await playerMove()
                     if (moveIsValid)
                       endTurn()
                     else
                       console.debug("La mossa non è valida riprovare.")
+
+                    setCanPlay(true)
+
                   }}>
                     {selectedTableCard.length <= 0 ? "Add to the table" : "Take cards"}
                   </button>
@@ -673,8 +709,6 @@ function App() {
           }
         </>
       }
-
-      
     </div>
   )
 }
