@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 
 import { useBaseState } from './utils/useBaseState'
 import { useOfflineState } from './utils/useOfflineState'
 import { useOnlineState } from './utils/useOnlineState'
 import { useBeforeUnloadEffect } from './utils/useBeforeUnloadEffect'
-import { getValueOfCard, checkTris, checkLess10, check15or30, grandeCondition, getRandomIntInclusive, piccolaCondition, computePrimiera } from './utils/utils'
+import { getValueOfCard, checkTris, checkLess10, check15or30, grandeCondition, getRandomIntInclusive, checkCombinationFor15, piccolaCondition, computePrimiera } from './utils/utils'
 
 import io from 'socket.io-client'
 
@@ -18,7 +18,8 @@ import './App.css'
 
 
 function App() {
-  const server = "https://ciapachinze.onrender.com"; //http://localhost:3000
+  const server = "https://ciapachinze.onrender.com";
+  //const server = "http://localhost:3000";
 
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
   //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
@@ -86,7 +87,6 @@ function App() {
     setBotHand
   } = useOfflineState();
 
-
   useBeforeUnloadEffect();
   
 
@@ -99,12 +99,9 @@ function App() {
 
   useEffect(() => {
     const botDraw = async () => { await botDrawCards() }
-
     const botMove = async () => { await botMakeMove() }
 
     if (!isMyTurn && mode === "single") {
-      
-
         if (botHand.length <= 0) {
           if (cardsDealt) {
             setTimeout(() => {
@@ -183,8 +180,7 @@ function App() {
       });
 
       newSocket.on('playerDraw', (count, remaining) => {
-        console.log("L'avversario ha pescato:", count, "carte rimanenti nel mazzo:", remaining);
-
+        //console.log("L'avversario ha pescato:", count, "carte rimanenti nel mazzo:", remaining);
         setRemaining(remaining)
       });
   
@@ -221,6 +217,7 @@ function App() {
         newSocket.off('turnUpdate');
         newSocket.off('playerMove');
         newSocket.off('trisOrLess10');
+        newSocket.off('is15or30');
         newSocket.off('playerDraw');
         newSocket.off('handUpdate');
         newSocket.off('dealCards');
@@ -238,23 +235,23 @@ function App() {
   }, [room])
 
   useEffect(() => {
-    console.debug("Selected card:", selectedCard)
+    //console.debug("Selected card:", selectedCard)
   }, [selectedCard])
 
   useEffect(() => {
-    console.debug("Selected table cards:", selectedTableCard)
+    //console.debug("Selected table cards:", selectedTableCard)
   }, [selectedTableCard])
 
   useEffect(() => {
     if (socket) {
-      console.debug("Player hand:", hand)
+      //console.debug("Player hand:", hand)
   
       socket.emit("handUpdate", hand.length, room)
     }
   }, [hand])
 
   useEffect(() => {
-    console.debug("Bot hand:", botHand)
+    //console.debug("Bot hand:", botHand)
   }, [botHand])
 
   useEffect(() => {
@@ -279,13 +276,21 @@ function App() {
   }, [cardsDealt]);
 
   useEffect(() => {
-    if (remaining <= 0 && hand.length === 0 && opponentsHand === 0 && !gameIsOver)
-      setGameIsOver(true)
-  }, [remaining, hand, opponentsHand]);
+    if (remaining <= 0 && hand.length === 0 && opponentsHand === 0 && !gameIsOver) {
+      if (mode === "single") {
+        if (botHand.length === 0)
+          setGameIsOver(true)
+      }
+      else setGameIsOver(true)
+    }
+  }, [remaining, hand, opponentsHand, botHand]);
 
   useEffect(() => {
     if (gameIsOver)
       computeScore()
+
+    if (mode === "single")
+      computeScore(true)
   }, [gameIsOver]);
 
 
@@ -333,11 +338,12 @@ function App() {
 
         const is15or30 = check15or30(data.cards)
 
+        // WORKAROUND -> NON BELLO
         if (is15or30 == 15 || is15or30 == 30) {
           if (is15or30 == 15)
-            setScope(prev => prev+1)
+            setScope(prev => prev)
           else if (is15or30 == 30)
-            setScope(prev => prev+2)
+            setScope(prev => prev+1)
 
           const tableCards = data.cards.map(card => card.code);
           const tableCardsTaken = tableCards.join(",")
@@ -365,10 +371,10 @@ function App() {
           setRemaining(data.remaining)
 
           // se è il giocatore 1 resetto sempre
-            if (resetOpponentHand || (mode === "multi" && players[1].replaceAll("-", "") == playerID))
-              setOpponentPlayedCards([])
-            else
-              setResetOpponentHand(true)
+          if (resetOpponentHand || (mode === "multi" && players[1].replaceAll("-", "") == playerID))
+            setOpponentPlayedCards([])
+          else
+            setResetOpponentHand(true)
           
           if (checkTris(data.cards)) {
             setScope(prev => prev+10)
@@ -389,7 +395,7 @@ function App() {
   }
 
   const addToPile = async (cardsTaken, selectedTableCards, deck_id=deck) => {
-    let pile_name = playerID ? playerID : "player_"+deck_id;
+    let pile_name = playerID ? playerID : "player_"+deck_id
 
     return fetch("https://www.deckofcardsapi.com/api/deck/"+deck_id+"/pile/"+pile_name+"_pile/add/?cards="+cardsTaken)
     .then((res) => res.json())
@@ -485,7 +491,7 @@ function App() {
       const playedCard = cardsTakenArray.shift()
 
       if (cardsTakenArray.length === 1) {
-        if (getValueOfCard(playedCard) === getValueOfCard(cardsTakenArray[0]) || parseInt(getValueOfCard(playedCard)) + parseInt(getValueOfCard(cardsTakenArray[0])) == 15)
+        if (getValueOfCard(playedCard) === getValueOfCard(cardsTakenArray[0]) || parseInt(getValueOfCard(playedCard)) + parseInt(getValueOfCard(cardsTakenArray[0])) === 15)
           moveIsValid = true
         else
           moveIsValid = false
@@ -496,7 +502,7 @@ function App() {
         for (let i=0; i<cardsTakenArray.length; i++)
           sumOfCardsTaken += parseInt(getValueOfCard(cardsTakenArray[i]))
 
-        if (sumOfCardsTaken == getValueOfCard(playedCard) || (sumOfCardsTaken + parseInt(getValueOfCard(playedCard)) == 15))
+        if (sumOfCardsTaken === parseInt(getValueOfCard(playedCard)) || (sumOfCardsTaken + parseInt(getValueOfCard(playedCard)) === 15))
           moveIsValid = true
         else
           moveIsValid = false
@@ -530,19 +536,26 @@ function App() {
     }
   };
 
-  const computeScore = async () => {
+  const computeScore = async (isBot=false) => {
+    const tableCards = table.map(card => card.code);
     if (isLastToTake) {
-      const tableCards = table.map(card => card.code);
-      const tableCardsTaken = selectedCard+","+tableCards.join(",")
+      const tableCardsTaken = tableCards.join(",") // watch out - prima era così: selectedCard+","+tableCards.join(",")
 
       await addToPile(tableCardsTaken, tableCards)
     }
+    else if (isBot) {
+      const tableCardsTaken = tableCards.join(",") // watch out - prima era così: botHand[0].code+","+tableCards.join(",")
 
-    return fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/pile/"+playerID+"_pile/list/")
+      await botAddToPile(tableCardsTaken, tableCards)
+    }
+
+    let pile_name = playerID ? playerID : (isBot ? "bot_"+deck : "player_"+deck)
+
+    return fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/pile/"+pile_name+"_pile/list/")
     .then((res) => res.json())
     .then((data) => {
-      if (data.piles[playerID+"_pile"]) {
-        const pile = data.piles[playerID+"_pile"].cards
+      if (data.piles[pile_name+"_pile"]) {
+        const pile = data.piles[pile_name+"_pile"].cards
   
         //compute diamonds
         let diamonds = 0
@@ -576,33 +589,59 @@ function App() {
 
         primiera = computePrimiera(pile)
 
-        setFinalScore({
-          cards: pile.length,
-          diamonds: diamonds,
-          scope: scope,
-          settebello: settebello,
-          piccola: piccola,
-          grande: grande,
-          primiera: primiera
-        })
+        if (isBot) {
+          setOpponentFinalScore({
+            cards: pile.length,
+            diamonds: diamonds,
+            scope: opponentScope,
+            settebello: settebello,
+            piccola: piccola,
+            grande: grande,
+            primiera: primiera
+          })
+        }
+        else {
+          setFinalScore({
+            cards: pile.length,
+            diamonds: diamonds,
+            scope: scope,
+            settebello: settebello,
+            piccola: piccola,
+            grande: grande,
+            primiera: primiera
+          })
+        }
   
-        socket.emit("playerScore", pile.length, diamonds, scope, settebello, piccola, grande, primiera, room)
+        if (mode === "multi") socket.emit("playerScore", pile.length, diamonds, scope, settebello, piccola, grande, primiera, room)
       }
       else {
-        setFinalScore({
-          cards: 0,
-          diamonds: 0,
-          scope: 0,
-          settebello: false,
-          piccola: false,
-          grande: false,
-          primiera: 0
-        })
+        if (isBot) {
+          setOpponentFinalScore({
+            cards: 0,
+            diamonds: 0,
+            scope: 0,
+            settebello: false,
+            piccola: false,
+            grande: false,
+            primiera: 0
+          })
+        }
+        else {
+          setFinalScore({
+            cards: 0,
+            diamonds: 0,
+            scope: 0,
+            settebello: false,
+            piccola: false,
+            grande: false,
+            primiera: 0
+          })
+        }
   
-        socket.emit("playerScore", 0, 0, 0, false, false, false, 0, room)
+        if (mode === "multi") socket.emit("playerScore", 0, 0, 0, false, false, false, 0, room)
       }
 
-      window.alert("Game is over!")
+      if (!isBot) window.alert("Game is over!")
     });
   }
 
@@ -622,13 +661,11 @@ function App() {
           if (checkTris(data.cards)) {
             setOpponentScope(prev => prev+10)
             setOpponentPlayedCards(data.cards)
-            setResetOpponentHand(false)
           }
   
           if (checkLess10(data.cards)) {
             setOpponentScope(prev => prev+3)
             setOpponentPlayedCards(data.cards)
-            setResetOpponentHand(false)
           }
         }
       })
@@ -648,25 +685,8 @@ function App() {
     return true;
   }
 
-  const botTakeCard = async (botSelectedCard) => {
-    let cardsTaken = botSelectedCard
-    const botSelectedTableCard = []
-
-    let moveIsValid = false
-
-    for (const card of table) {
-      if (getValueOfCard(card.code) === getValueOfCard(botSelectedCard)) {
-        cardsTaken += ","+card.code
-
-        botSelectedTableCard.push(card.code)
-
-        moveIsValid = true
-        break
-      }
-    }
-
-    if (!moveIsValid)
-      return false
+  const botTakeCard = async (botPlayedCard, botSelectedTableCard) => {
+    const cardsTaken = botPlayedCard+","+botSelectedTableCard.join(",")
 
     return await botAddToPile(cardsTaken, botSelectedTableCard)
   }
@@ -698,16 +718,66 @@ function App() {
     })
   }
 
+  const botChooseCardToPlay = () => {
+    const tableCards = table.map(card => card.code)
+    const botCards = botHand.map(card => card.code)
+
+    if (table.length <= 0)
+      return [botCards[0], ""]
+
+    const aceInTable = table.some(card => card.code[0] === "A")
+    const sumOfTable = tableCards.reduce((acc, card) => { return acc + parseInt(getValueOfCard(card)) }, 0)
+
+    // posso fare scopa
+    for (const card of botCards) {
+      if (sumOfTable < 15) {
+        if (parseInt(getValueOfCard(card)) + sumOfTable === 15 || parseInt(getValueOfCard(card)) === sumOfTable)
+          return [card, tableCards]
+      }
+    }
+
+    //faccio scopa con l'asso
+    for (const card of botCards) {
+      if (card[0] === 'A' && !aceInTable) {
+        return [card, tableCards]
+      }
+    }
+
+    // posso fare 15 con più carte
+    for (const card of botCards) {
+      const combinationFor15 = checkCombinationFor15(tableCards, parseInt(getValueOfCard(card)))
+      if (combinationFor15 && combinationFor15.length > 0)
+        return [card, combinationFor15]
+    }
+
+    // trovo carta uguale o faccio 15 con una carta
+    for (const card of botCards) {
+      const validTableCard = tableCards.find(tableCard => ( getValueOfCard(tableCard) === getValueOfCard(card) || parseInt(getValueOfCard(tableCard)) + parseInt(getValueOfCard(card)) === 15 ))
+      if (validTableCard)
+        return [card, [validTableCard]]
+    }
+
+    //caso base -> non posso prendere niente dal tavolo
+    return [botCards[0], ""]
+  }
+
   const botMakeMove = async () => {
-    const hasBotTaken = await botTakeCard(botHand[0].code)
-    if (!hasBotTaken)
-      botAddCard(botHand[0].code)
+    const botDecision = botChooseCardToPlay()
+
+    if (botDecision[1]) {
+      await botTakeCard(botDecision[0], botDecision[1])
+      setIsLastToTake(false)
+    }
+    else
+      botAddCard(botDecision[0])
 
     setOpponentPlayedCards((lastPlayedCards) => {
       if (lastPlayedCards.length+1 <= 3)
-        return [...lastPlayedCards, botHand[0]]
+        return [...lastPlayedCards, botHand.find(card => card.code === botDecision[0])]
       else return lastPlayedCards
     })
+
+    setSelectedTableCard([])
   } 
   /* END BOT FUNCTIONS */
 

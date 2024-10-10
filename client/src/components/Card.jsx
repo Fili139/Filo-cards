@@ -21,9 +21,9 @@ const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard,
   }
 
   return (
-    <div>
+    <>
       <img onClick={() => onCardClick(code)} src={image} className={style} />
-    </div>
+    </>
   );
 }
 

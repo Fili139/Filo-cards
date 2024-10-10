@@ -86,5 +86,28 @@ export const getRandomIntInclusive = (min, max) => {
   return randomNumber// The maximum is inclusive and the minimum is inclusive
 }
 
+export const checkCombinationFor15 = (cards, x, index=0, currentSum=0, currentCombination=[], bestCombination=null) => {
+  // Base case: se abbiamo controllato tutti gli elementi dell'array
+  if (index === cards.length) {
+    // Controlliamo se la somma corrente più x è uguale a 15 e se abbiamo almeno 2 elementi nell'array
+    if (currentSum + x === 15 && currentCombination.length >= 2) {
+      // Se non abbiamo ancora una bestCombination, o se la combinazione corrente è più lunga
+      if (bestCombination === null || currentCombination.length > bestCombination.length)
+        return currentCombination;  // Restituiamo questa combinazione come la migliore finora
+    }
+    return bestCombination;  // Nessuna nuova combinazione trovata, restituiamo la migliore finora
+  }
 
-export default { handleBeforeUnload, getValueOfCard, check15or30, checkTris, checkLess10, computePrimiera, getRandomIntInclusive, grandeCondition, piccolaCondition };
+  // Caso ricorsivo: proviamo entrambe le possibilità
+  // 1. Escludere l'elemento corrente
+  let exclude = checkCombinationFor15(cards, x, index + 1, currentSum, currentCombination, bestCombination);
+
+  // 2. Includere l'elemento corrente nella somma
+  let include = checkCombinationFor15(cards, x, index + 1, currentSum + parseInt(getValueOfCard(cards[index])), [...currentCombination, cards[index]], bestCombination);
+
+  // Confrontiamo i risultati delle due scelte e restituiamo la combinazione migliore (quella con più elementi)
+  return include && (!exclude || include.length > exclude.length) ? include : exclude;
+}
+
+
+export default { handleBeforeUnload, getValueOfCard, check15or30, checkTris, checkLess10, computePrimiera, getRandomIntInclusive, checkCombinationFor15, grandeCondition, piccolaCondition };
