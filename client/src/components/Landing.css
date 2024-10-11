@@ -1,0 +1,13 @@
+.landing {
+    display: flex;
+    margin-top: 5vh;
+}
+
+.landing img {
+    display: block;
+    align-self: center;
+}
+
+.landing h2 {
+    margin-right: 3vw;
+}

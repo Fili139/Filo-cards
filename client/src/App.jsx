@@ -8,6 +8,7 @@ import { getValueOfCard, checkTris, checkLess10, check15or30, grandeCondition, g
 
 import io from 'socket.io-client'
 
+import Landing from './components/Landing'
 import Hand from './components/Hand'
 import Table from './components/Table'
 import OpponentHand from './components/OpponentHand'
@@ -425,12 +426,14 @@ function App() {
     })
   }
 
-  const addCardToTable = () => {
+  const addCardToTable = (dragEvent=false) => {
+    const card = dragEvent ? JSON.parse(dragEvent.dataTransfer.getData('card')) : selectedCard;
+
     setHand(
-      hand.filter(x => x.code != selectedCard)
+      hand.filter(x => x.code != card)
     )
 
-    const playedCard = hand.filter(x => x.code == selectedCard)
+    const playedCard = hand.filter(x => x.code == card)
 
     const newTable = [...table, ...playedCard]
 
@@ -785,6 +788,10 @@ function App() {
   return (
     <div className="app">
       
+      {!deck &&
+        <Landing />
+      }
+
       {!mode &&
         <>
           <br/>
@@ -845,7 +852,6 @@ function App() {
 
           {deck &&
             <>
-
               {mode === "single" &&
                 <>
                   { isMyTurn ? <h3 className='turn-message'>It's your turn!</h3> : <h3 className='wait-message dots'>Waiting for the opponent</h3> }
@@ -866,6 +872,8 @@ function App() {
                 cards={table}
                 selectedTableCard={selectedTableCard}
                 setSelectedTableCard={setSelectedTableCard}
+                addCardToTable={addCardToTable}
+                endTurn={endTurn}
               />
             </>
           }

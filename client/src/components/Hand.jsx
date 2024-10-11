@@ -1,9 +1,9 @@
-// PlayerHand.js
-import React, { useEffect, useState } from 'react';
+// Hand.js
+import React from 'react';
 import Card from './Card';
 import './Hand.css';
 
-const PlayerHand = ({ cards, selectedCard, setSelectedCard }) => {
+const Hand = ({ cards, selectedCard, setSelectedCard }) => {
   /*
   const [tempCards, setTempCards] = useState([])
   const [diff, setDiff] = useState({})
@@ -25,4 +25,4 @@ const PlayerHand = ({ cards, selectedCard, setSelectedCard }) => {
   );
 };
 
-export default PlayerHand;
+export default Hand;

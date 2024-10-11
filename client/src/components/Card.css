@@ -1,34 +1,46 @@
+.show-card {
+    opacity: 1;
+}
+
 .card-table-image {
   	height: 14vh;
 
-  	opacity: 1;
+	/*
 	animation-name: fadeInOpacity;
 	animation-iteration-count: 1;
 	animation-timing-function: ease-in;
 	animation-duration: 0.5s;
+	*/
+
+	opacity: 0;
+	animation: fadeInOpacity .5s ease-in-out forwards;
 }
 
 .card-hand-image {
   	height: 13vh;
 
-  	opacity: 1;
+	/*
 	animation-name: fadeInOpacity;
 	animation-iteration-count: 1;
 	animation-timing-function: ease-in;
-	animation-duration: 1s;
+	animation-duration: 0.5s;
+	*/
+
+	opacity: 0;
+	animation: fadeInOpacity .5s ease-in-out forwards;
 }
 
 /* Stili per schermi non tattili */
 @media (hover: hover) {
 	.card-table-image:hover, .card-hand-image:hover {
-		cursor: pointer;
+		cursor: grab;
 		transform: translateY(-1rem) scale(1.05);
 		/*box-shadow: 0 8px 12px rgba(0,0,0,0.2);*/
 	}
-}
 
-.card-value {
-  	font-weight: bold;
+	.card-table-image:active, .card-hand-image:active {
+		cursor: grabbing;
+	}
 }
 
 .card-selected {
@@ -39,7 +51,7 @@
 
 @keyframes fadeInOpacity {
 	0% {
-    opacity: 0;
+    	opacity: 0;
 	}
 	100% {
 		opacity: 1;

@@ -1,9 +1,13 @@
 // Card.js
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './Card.css';
 
 const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard, isSelected }) => {
-  const style = isSelected ? ( origin === "hand" ? "card-hand-image card-selected" : "card-table-image card-selected") :  (origin === "hand" ? "card-hand-image" : "card-table-image");
+  let style = isSelected ? ( origin === "hand" ? "card-hand-image card-selected" : "card-table-image card-selected") : (origin === "hand" ? "card-hand-image" : "card-table-image")
+
+  useEffect(() => {
+    setTimeout(() => style += " show-card", 100);
+  }, []);
 
   const onCardClick = (code) => {
     if (origin === "hand") {
@@ -22,7 +26,13 @@ const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard,
 
   return (
     <>
-      <img onClick={() => onCardClick(code)} src={image} className={style} />
+      <img
+        draggable={origin === "hand" ? true : false}
+        onDragStart={(e) => e.dataTransfer.setData('card', JSON.stringify(code)) }
+        onClick={() => onCardClick(code)}
+        src={image}
+        className={style}
+      />
     </>
   );
 }
