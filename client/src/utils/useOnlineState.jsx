@@ -12,6 +12,8 @@ export const useOnlineState = () => {
     const [players, setPlayers] = useState([]);
     const [currentTurn, setCurrentTurn] = useState("");
 
+    const [name, setName] = useState("");
+
     return {
         socket,
         setSocket,
@@ -25,5 +27,7 @@ export const useOnlineState = () => {
         setCurrentTurn,
         playerID,
         setPlayerID,
+        name,
+        setName
     };
 };

@@ -12,6 +12,7 @@ import Landing from './components/Landing'
 import Hand from './components/Hand'
 import Table from './components/Table'
 import OpponentHand from './components/OpponentHand'
+import ChooseNameForm from './components/ChooseNameForm'
 import JoinRoomForm from './components/JoinRoomForm'
 import DisplayScore from './components/DisplayScore'
 
@@ -21,6 +22,8 @@ import './App.css'
 function App() {
   const server = "https://ciapachinze.onrender.com";
   //const server = "http://localhost:3000";
+
+  const version = "beta 7.0"
 
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
   //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
@@ -75,6 +78,8 @@ function App() {
     setRoom,
     rooms,
     setRooms,
+    name,
+    setName,
     players,
     setPlayers,
     currentTurn,
@@ -146,6 +151,8 @@ function App() {
       });
   
       newSocket.on('playersUpdate', ({ players, currentTurn }) => {
+        console.debug(players)
+
         setPlayers(players);
         setCurrentTurn(currentTurn);
       });
@@ -168,7 +175,9 @@ function App() {
 
         setSelectedTableCard([])
 
-        setTable(newTable)
+        setTimeout(() => {
+          setTable(newTable)
+        }, 1500)
       });
       
       newSocket.on('trisOrLess10', (cards) => {
@@ -232,7 +241,7 @@ function App() {
 
   useEffect(() => {
     if (socket)
-      socket.emit('joinRoom', room);
+      socket.emit('joinRoom', room, name);
   }, [room])
 
   useEffect(() => {
@@ -258,7 +267,6 @@ function App() {
   useEffect(() => {
     if (table.length > 0)
       console.debug("Table:", table)
-
   }, [table])
 
   useEffect(() => {
@@ -372,7 +380,7 @@ function App() {
           setRemaining(data.remaining)
 
           // se è il giocatore 1 resetto sempre
-          if (resetOpponentHand || (mode === "multi" && players[1].replaceAll("-", "") == playerID))
+          if (resetOpponentHand || (mode === "multi" && players[1].id.replaceAll("-", "") == playerID))
             setOpponentPlayedCards([])
           else
             setResetOpponentHand(true)
@@ -438,7 +446,7 @@ function App() {
     const newTable = [...table, ...playedCard]
 
     setSelectedCard("")
-    setTable((prevTable) => [...prevTable, ...playedCard]);
+    setTable(newTable);
 
     if (mode === "multi") socket.emit('playerMove', playedCard[0], "", newTable, room);
 
@@ -682,7 +690,9 @@ function App() {
 
     const playedCard = botHand.filter(x => x.code == botSelectedCard)
 
-    setTable((prevTable) => [...prevTable, ...playedCard]);
+    setTimeout(() => {
+      setTable((prevTable) => [...prevTable, ...playedCard]);
+    }, 500)
 
     // la mossa è sempre valida
     return true;
@@ -711,8 +721,9 @@ function App() {
         setBotHand(
           botHand.filter(x => x.code != botSelectedCard)
         )
-
-        setTable(newTable)
+        setTimeout(() => {
+          setTable(newTable)
+        }, 1250)
 
         setIsLastToTake(false)
 
@@ -741,9 +752,8 @@ function App() {
 
     //faccio scopa con l'asso
     for (const card of botCards) {
-      if (card[0] === 'A' && !aceInTable) {
+      if (card[0] === 'A' && !aceInTable)
         return [card, tableCards]
-      }
     }
 
     // posso fare 15 con più carte
@@ -789,11 +799,15 @@ function App() {
     <div className="app">
       
       {!deck &&
-        <Landing />
+        <>
+          <Landing />
+          <footer>{version}</footer>
+        </>
       }
 
       {!mode &&
         <>
+          <br/>
           <br/>
 
           <button onClick={() => setMode("single")}>Play offline</button>
@@ -807,7 +821,13 @@ function App() {
         </>
       }
 
-      {(mode === "multi" && !room) &&
+      {(mode === "multi" && !room && !name) &&
+        <ChooseNameForm
+          setName={setName}
+        />
+      }
+
+      {(mode === "multi" && !room && name) &&
         <JoinRoomForm
           setRoom={setRoom}
           rooms={rooms}
@@ -832,7 +852,7 @@ function App() {
               { !deck && players.map((player, key) => {
                 return (
                   <li key={key}>
-                    {player} {player.replaceAll("-", "") === playerID ? '(you)' : ''}
+                    {player.name} {player.id.replaceAll("-", "") === playerID ? '(you)' : ''}
                   </li>  
                 )
               })}
@@ -858,15 +878,22 @@ function App() {
                 </>
               }
 
+              <h4>
+                Cards remaining: {remaining}
+              </h4>
+
               <OpponentHand
                 playedCards={opponentPlayedCards}
               />
 
-              <div>
-                Cards remaining: {remaining}
-              </div>
+              <p>
+                Scope: {opponentScope}
+              </p>
 
-              <p>Table</p>
+              <br/>
+              <br/>
+
+              <h4>Table</h4>
 
               <Table
                 cards={table}
@@ -875,13 +902,16 @@ function App() {
                 addCardToTable={addCardToTable}
                 endTurn={endTurn}
               />
+
+              <p className='player-scope'>Scope: {scope}</p>
             </>
           }
 
           {(deck && hand.length <= 0 && isMyTurn) &&
             <>
               <br/>
-              <button disabled={!canDraw} onClick={async () => {
+
+              <button className={"button-move"} disabled={!canDraw} onClick={async () => {
                 await drawCards()
                 endTurn()
               }}>Draw cards</button>
@@ -889,8 +919,10 @@ function App() {
           }
 
           {hand.length > 0 &&
-            <div>
-              <p>Player's hand</p>
+            <>
+
+              {/*<p>Player's hand</p>*/}
+
               <Hand
                 cards={hand}
                 selectedCard={selectedCard}
@@ -898,32 +930,20 @@ function App() {
               />
 
               {(selectedCard && isMyTurn) &&
-                <>
-                  <br/>
-                  <button disabled={!canPlay} onClick={async () => {
-                    const moveIsValid = await playerMove()
-                    if (moveIsValid)
-                      endTurn()
-                    else
-                      console.debug("La mossa non è valida riprovare.")
+                <button className={"button-move"} disabled={!canPlay} onClick={async () => {
+                  const moveIsValid = await playerMove()
+                  if (moveIsValid)
+                    endTurn()
+                  else
+                    console.debug("La mossa non è valida riprovare.")
 
-                    setCanPlay(true)
+                  setCanPlay(true)
 
-                  }}>
-                    {selectedTableCard.length <= 0 ? "Add to the table" : "Take cards"}
-                  </button>
-                </>
+                }}>
+                  {selectedTableCard.length <= 0 ? "Add to the table" : "Take cards"}
+                </button>
               }
-            </div>
-          }
-
-          {deck &&
-            <div>
-              <br/>
-              Scope: {scope}
-              <br/>
-              Opponent's scope: {opponentScope}
-            </div>
+            </>
           }
         </>
       }

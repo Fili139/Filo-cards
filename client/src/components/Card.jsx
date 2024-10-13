@@ -3,13 +3,25 @@ import React, { useState, useEffect } from 'react';
 import './Card.css';
 
 const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard, isSelected }) => {
-  let style = isSelected ? ( origin === "hand" ? "card-hand-image card-selected" : "card-table-image card-selected") : (origin === "hand" ? "card-hand-image" : "card-table-image")
+  const [loaded, setLoaded] = useState(false)
+  const [style, setStyle] = useState(origin === "hand" ? "card-hand-image" : "card-table-image")
 
-  /*
   useEffect(() => {
-    
-  }, []);
-  */
+    if (isSelected)
+      setStyle(prevStyle => prevStyle += " card-selected")
+    else
+      setStyle(prevStyle => prevStyle.replace("card-selected", ""))
+  }, [isSelected]);
+
+  useEffect(() => {
+    if (loaded) {
+      // è possibile che il timeout non serva
+      setTimeout(() => {
+        setStyle(prevStyle => prevStyle += " show-card")
+      }, 100)
+    }
+  }, [loaded]);
+  
 
   const onCardClick = (code) => {
     if (origin === "hand") {
@@ -31,7 +43,7 @@ const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard,
       <img
         draggable={origin === "hand" ? true : false}
         onDragStart={(e) => e.dataTransfer.setData('card', JSON.stringify(code)) }
-        onLoad={() => setTimeout(() => style += " show-card", 150)}
+        onLoad={() => setLoaded(true)}
         onClick={() => onCardClick(code)}
         src={image}
         className={style}

@@ -29,6 +29,27 @@
   animation: dots 2.5s steps(3, end) infinite;
 }
 
+footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 2.5rem;            /* Footer height */
+}
+
+.button-move {
+  position: fixed;
+  bottom: 1.5vh;
+  left: 0;
+  right: 0;
+}
+
+.player-scope {
+  position: fixed;
+  bottom: 22vh;
+  left: 0;
+  right: 0;
+}
+
 /* Definizione dell'animazione */
 @keyframes dots {
   0% { content: ''; }

@@ -1,5 +1,15 @@
 .player-hand {
+    /*
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
+    */
+
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    position: fixed;
+    bottom: 7.5vh;
+    left: 0;
+    right: 0;
 }

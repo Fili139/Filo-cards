@@ -1,11 +1,11 @@
 import { useForm } from 'react-hook-form'
 import RoomsAvailable from './RoomsAvailable'
 
-const JoinRoomForm = ({ setRoom, setMode, rooms }) => {
+const JoinRoomForm = ({ setRoom, rooms }) => {
     const { register, handleSubmit } = useForm();
 
     const joinRoom = (data) => setRoom(data.room)
-
+    
     return (
         <>
             <RoomsAvailable 

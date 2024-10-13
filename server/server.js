@@ -56,8 +56,8 @@ io.on('connection', (socket) => {
         callback({ count: clientCount });
     });   
 
-    socket.on('joinRoom', (room) => {
-        console.log(`Il giocatore: ${socket.id}`, "vuole entrare nella room", room);
+    socket.on('joinRoom', (room, name) => {
+        console.log(`Il giocatore: ${name} (${socket.id})`, "vuole entrare nella room", room);
 
         // Se la room non esiste ancora, creala
         if (!rooms[room]) {
@@ -69,16 +69,19 @@ io.on('connection', (socket) => {
         
         if (rooms[room].players.length < 2) {
             // Aggiungi il giocatore alla lista della room
-            rooms[room].players.push(socket.id);
+            rooms[room].players.push({
+                id: socket.id,
+                name: name
+            });
             
             socket.join(room);
             
-            console.log(`Il giocatore: ${socket.id}`, "è entrato nella room", room);
+            console.log(`Il giocatore: ${name} (${socket.id})`, "è entrato nella room", room);
 
             // Notifica tutti i giocatori nella room del nuovo stato
             io.to(room).emit('playersUpdate', {
                 players: rooms[room].players,
-                currentTurn: rooms[room].players[rooms[room].currentTurnIndex],
+                currentTurn: rooms[room].players[rooms[room].currentTurnIndex].id,
             });
         }
         else {
@@ -142,7 +145,7 @@ io.on('connection', (socket) => {
         if (roomData) {
             // Passa il turno al prossimo giocatore nella room
             roomData.currentTurnIndex = (roomData.currentTurnIndex + 1) % roomData.players.length;
-            const nextPlayer = roomData.players[roomData.currentTurnIndex];
+            const nextPlayer = roomData.players[roomData.currentTurnIndex].id;
 
             // Notifica tutti i giocatori della room del nuovo turno
             io.to(room).emit('turnUpdate', { currentTurn: nextPlayer });
@@ -156,7 +159,7 @@ io.on('connection', (socket) => {
         // Rimuovi il giocatore da tutte le room a cui apparteneva
         for (const room in rooms) {
             const roomData = rooms[room];
-            roomData.players = roomData.players.filter(player => player !== socket.id);
+            roomData.players = roomData.players.filter(player => player.id !== socket.id);
 
             // Se la room ha ancora giocatori, aggiorna il turno
             if (roomData.players.length > 0) {
@@ -165,7 +168,7 @@ io.on('connection', (socket) => {
 
                 io.to(room).emit('playersUpdate', {
                     players: roomData.players,
-                    currentTurn: roomData.players[roomData.currentTurnIndex],
+                    currentTurn: roomData.players[roomData.currentTurnIndex].id,
                 });
             } else {
                 // Se non ci sono più giocatori nella room, elimina la room
