@@ -802,7 +802,7 @@ function App() {
       {!deck &&
         <>
           <Landing />
-          <footer>{version}</footer>
+          <span className='footer'>{version}</span>
         </>
       }
 
