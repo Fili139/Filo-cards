@@ -20,8 +20,8 @@ import './App.css'
 
 
 function App() {
-  const server = "https://ciapachinze.onrender.com";
-  //const server = "http://localhost:3000";
+  //const server = "https://ciapachinze.onrender.com";
+  const server = "http://localhost:3000";
 
   const version = "beta 7.0"
 
@@ -721,6 +721,7 @@ function App() {
         setBotHand(
           botHand.filter(x => x.code != botSelectedCard)
         )
+        
         setTimeout(() => {
           setTable(newTable)
         }, 1250)
