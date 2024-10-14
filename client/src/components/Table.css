@@ -1,5 +1,9 @@
+.table {
+    margin-top: 9vh;
+}
+
 .table-cards {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
-}  
+}

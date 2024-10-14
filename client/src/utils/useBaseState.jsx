@@ -33,6 +33,8 @@ export const useBaseState = () => {
   const [canDraw, setCanDraw] = useState(true)
   const [canPlay, setCanPlay] = useState(true)
 
+  const [toastMessage, setToastMessage] = useState("")
+
   return {
     mode,
     setMode,
@@ -73,6 +75,8 @@ export const useBaseState = () => {
     canDraw,
     setCanDraw,
     canPlay,
-    setCanPlay
+    setCanPlay,
+    toastMessage,
+    setToastMessage
   };
 };

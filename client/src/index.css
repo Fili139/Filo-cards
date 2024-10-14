@@ -82,11 +82,23 @@ button:hover {
   background-color: #DAA520;
   color: #8B4513;
   box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
-  transform: translateY(-5px);
+  transform: translateY(-1vh);
 }
 
 button:active {
-  transform: translateY(5px);
+  transform: translateY(0.5vh);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.button-move:hover {
+  background-color: #DAA520;
+  color: #8B4513;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+  transform: translateX(-50%) translateY(-0.5vh);
+}
+
+.button-move:active {
+  transform: translateX(-50%) translateY(0.5vh);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 

@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 
+import toast, { Toaster } from 'react-hot-toast';
+
 import { useBaseState } from './utils/useBaseState'
 import { useOfflineState } from './utils/useOfflineState'
 import { useOnlineState } from './utils/useOnlineState'
@@ -20,10 +22,10 @@ import './App.css'
 
 
 function App() {
-  //const server = "https://ciapachinze.onrender.com";
-  const server = "http://localhost:3000";
+  const server = "https://ciapachinze.onrender.com";
+  //const server = "http://localhost:3000";
 
-  const version = "beta 7.0"
+  const version = "beta 8.0"
 
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
   //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
@@ -68,7 +70,9 @@ function App() {
     canDraw,
     setCanDraw,
     canPlay,
-    setCanPlay
+    setCanPlay,
+    toastMessage,
+    setToastMessage
   } = useBaseState();
 
   const {
@@ -94,7 +98,7 @@ function App() {
   } = useOfflineState();
 
   useBeforeUnloadEffect();
-  
+
 
   /* BOT LOGIC */
   useEffect(() => {
@@ -151,7 +155,7 @@ function App() {
       });
   
       newSocket.on('playersUpdate', ({ players, currentTurn }) => {
-        console.debug(players)
+        //console.debug(players)
 
         setPlayers(players);
         setCurrentTurn(currentTurn);
@@ -175,9 +179,7 @@ function App() {
 
         setSelectedTableCard([])
 
-        setTimeout(() => {
-          setTable(newTable)
-        }, 1500)
+        setTable(newTable)
       });
       
       newSocket.on('trisOrLess10', (cards) => {
@@ -185,8 +187,18 @@ function App() {
         setOpponentPlayedCards(cards)
       });
 
-      newSocket.on('is15or30', (remaining) => {
+      newSocket.on('aMonte', (toast) => {
+        setToastMessage(toast)
+
+        setTimeout(() => {
+          window.location.reload(false)
+        }, 3000);
+      });
+
+      newSocket.on('is15or30', (remaining, toast) => {
         setRemaining(remaining)
+
+        setToastMessage(toast)
       });
 
       newSocket.on('playerDraw', (count, remaining) => {
@@ -302,6 +314,19 @@ function App() {
       computeScore(true)
   }, [gameIsOver]);
 
+  useEffect(() => {
+    if (toastMessage[0]) {
+      if (!toastMessage[1])
+        toast(toastMessage[0]);
+      if (toastMessage[1] === "success")
+        toast.success(toastMessage[0]);
+      if (toastMessage[1] === "error")
+        toast.error(toastMessage[0]);
+
+      setToastMessage(["", ""])
+    }
+  }, [toastMessage]);
+
 
   const endTurn = () => {
     if (mode === "multi") {
@@ -345,6 +370,25 @@ function App() {
         setTable((prevTable) => [...prevTable, ...data.cards]);
         setRemaining(data.remaining)
 
+        let aces = 0
+        for (const card of data.cards) {
+          if (card.code[0] === "A")
+            aces++
+        }
+
+        if (aces >= 2) {
+          const toastMonte = "A monte! 2 aces dealt"
+          if (mode === "multi") socket.emit('aMonte', [toastMonte, "error"], room)
+
+          setToastMessage([toastMonte, "error"])
+          
+          setTimeout(() => {
+            window.location.reload(false)
+          }, 3000);
+
+          return
+        }
+
         const is15or30 = check15or30(data.cards)
 
         // WORKAROUND -> NON BELLO
@@ -356,10 +400,14 @@ function App() {
 
           const tableCards = data.cards.map(card => card.code);
           const tableCardsTaken = tableCards.join(",")
+          
+          const toast15or30 = "15 or 30 in table! Table cards taken"
+          if (mode === "multi") socket.emit('is15or30', data.remaining, [toast15or30, "error"], room)
 
-          if (mode === "multi") socket.emit('is15or30', data.remaining, room)
+          setToastMessage([toast15or30, "success"])
 
           await addToPile(tableCardsTaken, tableCards, deckID)
+
         }
         else
           if (mode === "multi") socket.emit('dealCards', data.cards, data.remaining, room);
@@ -652,8 +700,25 @@ function App() {
         if (mode === "multi") socket.emit("playerScore", 0, 0, 0, false, false, false, 0, room)
       }
 
-      if (!isBot) window.alert("Game is over!")
+      if (!isBot) setToastMessage(["Game is over!", "success"])
     });
+  }
+
+  const awaitSetTimeout = async (time) => { return new Promise(resolve => setTimeout(resolve, time)) }
+
+  const goMainMenu = () => {
+    setMode("")
+    setName("")
+    setRoom("")
+  }
+
+  const MainMenuButton = () => {
+    return(
+      <>
+        <br/>
+        <button onClick={() => goMainMenu()}>Go back</button>
+      </>
+    );
   }
 
 
@@ -683,18 +748,18 @@ function App() {
     }
   }
 
-  const botAddCard = (botSelectedCard) => {
+  const botAddCard = async (botSelectedCard) => {
     setBotHand(
       botHand.filter(x => x.code != botSelectedCard)
     )
 
     const playedCard = botHand.filter(x => x.code == botSelectedCard)
-
-    setTimeout(() => {
-      setTable((prevTable) => [...prevTable, ...playedCard]);
-    }, 500)
-
+    
+    //await awaitSetTimeout(500)
+    
     // la mossa è sempre valida
+    setTable((prevTable) => [...prevTable, ...playedCard]);
+
     return true;
   }
 
@@ -722,11 +787,11 @@ function App() {
           botHand.filter(x => x.code != botSelectedCard)
         )
         
-        setTimeout(() => {
-          setTable(newTable)
-        }, 1250)
-
         setIsLastToTake(false)
+        
+        //await awaitSetTimeout(5000)
+        
+        setTable(newTable)
 
         return true;
       }
@@ -798,7 +863,13 @@ function App() {
 
   return (
     <div className="app">
-      
+      <Toaster
+        toastOptions={{
+          // Define default options
+          duration: 4250
+        }}
+      />
+
       {!deck &&
         <>
           <Landing />
@@ -823,16 +894,24 @@ function App() {
       }
 
       {(mode === "multi" && !room && !name) &&
-        <ChooseNameForm
-          setName={setName}
-        />
+        <>
+          <ChooseNameForm
+            setName={setName}
+          />
+          
+          <MainMenuButton/>
+        </>
       }
 
       {(mode === "multi" && !room && name) &&
-        <JoinRoomForm
-          setRoom={setRoom}
-          rooms={rooms}
-        />
+        <>
+          <JoinRoomForm
+            setRoom={setRoom}
+            rooms={rooms}
+          />
+
+          <MainMenuButton/>
+        </>
       }
 
       {(gameIsOver && Object.keys(finalScore).length > 0 && Object.keys(opponentFinalScore).length > 0) &&
@@ -868,6 +947,8 @@ function App() {
                   }
                 </>
               }
+
+              <MainMenuButton/>
             </>
           }
 
@@ -890,11 +971,6 @@ function App() {
               <p>
                 Scope: {opponentScope}
               </p>
-
-              <br/>
-              <br/>
-
-              <h4>Table</h4>
 
               <Table
                 cards={table}
@@ -936,7 +1012,7 @@ function App() {
                   if (moveIsValid)
                     endTurn()
                   else
-                    console.debug("La mossa non è valida riprovare.")
+                    setToastMessage(["Move isn't valid", "error"])
 
                   setCanPlay(true)
 
