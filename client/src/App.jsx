@@ -16,6 +16,7 @@ import Table from './components/Table'
 import OpponentHand from './components/OpponentHand'
 import ChooseNameForm from './components/ChooseNameForm'
 import JoinRoomForm from './components/JoinRoomForm'
+import ChooseGameTypeForm from './components/ChooseGameTypeForm'
 import DisplayScore from './components/DisplayScore'
 
 import './App.css'
@@ -72,7 +73,9 @@ function App() {
     canPlay,
     setCanPlay,
     toastMessage,
-    setToastMessage
+    setToastMessage,
+    gameType,
+    setGameType
   } = useBaseState();
 
   const {
@@ -104,8 +107,8 @@ function App() {
   useEffect(() => {
     const getDeckOffline = async () => { await getDeck(); setCardsDealt(true) }
 
-    if (mode === "single" && !deck) getDeckOffline()
-  }, [mode])
+    if (mode === "single" && !deck && gameType) getDeckOffline()
+  }, [mode, gameType])
 
   useEffect(() => {
     const botDraw = async () => { await botDrawCards() }
@@ -704,8 +707,6 @@ function App() {
     });
   }
 
-  const awaitSetTimeout = async (time) => { return new Promise(resolve => setTimeout(resolve, time)) }
-
   const goMainMenu = () => {
     setMode("")
     setName("")
@@ -888,26 +889,33 @@ function App() {
 
           <br/>
           <br/>
+          <br/>
 
           <a href='https://it.wikipedia.org/wiki/Cirulla' target='_blank'>Click here to check the rules</a>
         </>
       }
 
-      {(mode === "multi" && !room && !name) &&
+      {(mode === "multi" && !room) &&
         <>
-          <ChooseNameForm
-            setName={setName}
-          />
-          
+          {!name ? 
+            <ChooseNameForm
+              setName={setName}
+            />
+            :
+            <JoinRoomForm
+              setRoom={setRoom}
+              rooms={rooms}
+            /> 
+          }
+
           <MainMenuButton/>
         </>
       }
 
-      {(mode === "multi" && !room && name) &&
+      {(mode === "single" && !deck) &&
         <>
-          <JoinRoomForm
-            setRoom={setRoom}
-            rooms={rooms}
+          <ChooseGameTypeForm
+            setGameType={setGameType}
           />
 
           <MainMenuButton/>
@@ -985,14 +993,10 @@ function App() {
           }
 
           {(deck && hand.length <= 0 && isMyTurn) &&
-            <>
-              <br/>
-
               <button className={"button-move"} disabled={!canDraw} onClick={async () => {
                 await drawCards()
                 endTurn()
               }}>Draw cards</button>
-            </>
           }
 
           {hand.length > 0 &&

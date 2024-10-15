@@ -20,7 +20,7 @@ const Table = ({ cards, selectedTableCard, setSelectedTableCard, addCardToTable,
                     cards.map((card, index) => (
                         <Card origin="table" key={index} code={card.code} image={card.image} suit={card.suit} value={card.value} selectedCard={selectedTableCard} setSelectedCard={setSelectedTableCard} isSelected={selectedTableCard.includes(card.code)}/>
                     ))
-                : <p><b>Table is empty :(</b></p>
+                : <b>Table is empty :(</b>
                 }
             </div>
         </div>

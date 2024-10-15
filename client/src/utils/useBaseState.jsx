@@ -35,6 +35,8 @@ export const useBaseState = () => {
 
   const [toastMessage, setToastMessage] = useState("")
 
+  const [gameType, setGameType] = useState("")
+
   return {
     mode,
     setMode,
@@ -77,6 +79,8 @@ export const useBaseState = () => {
     canPlay,
     setCanPlay,
     toastMessage,
-    setToastMessage
+    setToastMessage,
+    gameType,
+    setGameType
   };
 };

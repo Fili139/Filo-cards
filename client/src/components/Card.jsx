@@ -4,7 +4,7 @@ import './Card.css';
 
 const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard, isSelected }) => {
   const [loaded, setLoaded] = useState(false)
-  const [style, setStyle] = useState(origin === "hand" ? "card-hand-image" : "card-table-image")
+  const [style, setStyle] = useState((origin === "hand" || origin === "opponent") ? "card-hand-image" : "card-table-image")
 
   useEffect(() => {
     if (isSelected)
@@ -14,12 +14,8 @@ const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard,
   }, [isSelected]);
 
   useEffect(() => {
-    if (loaded) {
-      // è possibile che il timeout non serva
-      setTimeout(() => {
-        setStyle(prevStyle => prevStyle += " show-card")
-      }, 100)
-    }
+    if (loaded)
+      setStyle(prevStyle => prevStyle += " show-card")
   }, [loaded]);
   
 
@@ -40,13 +36,22 @@ const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard,
 
   return (
     <>
+      {!loaded &&
+        <img
+          draggable={false}
+          src="https://www.deckofcardsapi.com/static/img/back.png"
+          className="back-card-hand-image"
+        />
+      }
+
       <img
         draggable={origin === "hand" ? true : false}
         onDragStart={(e) => e.dataTransfer.setData('card', JSON.stringify(code)) }
         onLoad={() => setLoaded(true)}
-        onClick={() => onCardClick(code)}
+        onClick={() => { if (code) onCardClick(code) }}
         src={image}
         className={style}
+        style={{ display: loaded ? "" : "none" }}
       />
     </>
   );
