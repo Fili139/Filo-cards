@@ -105,7 +105,7 @@ function App() {
 
   /* BOT LOGIC */
   useEffect(() => {
-    const getDeckOffline = async () => { await getDeck(); setCardsDealt(true) }
+    const getDeckOffline = async () => { console.debug("osiride", isMyTurn); await getDeck(); setCardsDealt(true) }
 
     if (mode === "single" && !deck && gameType) getDeckOffline()
   }, [mode, gameType])
@@ -115,22 +115,22 @@ function App() {
     const botMove = async () => { await botMakeMove() }
 
     if (!isMyTurn && mode === "single") {
-        if (botHand.length <= 0) {
-          if (cardsDealt) {
-            setTimeout(() => {
-              botDraw()
-              setIsMyTurn(true)
-            }, getRandomIntInclusive(700, 1500))
-          }
-          else
-            setIsMyTurn(true)
-        }
-        else {
+      if (botHand.length <= 0) {
+        if (cardsDealt) {
           setTimeout(() => {
-            botMove()
+            botDraw()
             setIsMyTurn(true)
-          }, getRandomIntInclusive(1000, 2000))
-        }  
+          }, getRandomIntInclusive(700, 1500))
+        }
+        else
+          setIsMyTurn(true)
+      }
+      else {
+        setTimeout(() => {
+          botMove()
+          setIsMyTurn(true)
+        }, getRandomIntInclusive(1000, 2000))
+      }  
     }
   }, [isMyTurn])
   /* END BOT LOGIC */
@@ -285,7 +285,8 @@ function App() {
   }, [table])
 
   useEffect(() => {
-    setIsMyTurn(playerID === currentTurn.replaceAll("-", ""));
+    if (playerID)
+      setIsMyTurn(playerID === currentTurn.replaceAll("-", ""));
   }, [playerID, currentTurn]);
 
   useEffect(() => {
@@ -711,6 +712,9 @@ function App() {
     setMode("")
     setName("")
     setRoom("")
+    setSocket("")
+    setGameType("")
+    setIsMyTurn(false)
   }
 
   const MainMenuButton = () => {
@@ -908,7 +912,7 @@ function App() {
             /> 
           }
 
-          <MainMenuButton/>
+          <MainMenuButton />
         </>
       }
 
@@ -918,7 +922,7 @@ function App() {
             setGameType={setGameType}
           />
 
-          <MainMenuButton/>
+          <MainMenuButton />
         </>
       }
 
@@ -956,7 +960,7 @@ function App() {
                 </>
               }
 
-              <MainMenuButton/>
+              <MainMenuButton />
             </>
           }
 
