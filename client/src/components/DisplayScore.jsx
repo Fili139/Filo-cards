@@ -1,11 +1,20 @@
 
 // DisplayScore.js
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
-const DisplayScore = ({ finalScore, opponentFinalScore }) => {
+const DisplayScore = ({ finalScore, opponentFinalScore, totalPoints, setTotalPoints, opponentTotalPoints, setOpponentTotalPoints, gameType, setDeck, setGameIsOver }) => {
+    const [prevPoints, setPrevPoints] = useState(0)
+    const [opponentPrevPoints, setOpponentPrevPoints] = useState(0)
 
-    let totalScore = 0
-    let opponentTotalScore = 0
+    const totalScore = useRef(0);
+    const opponentTotalScore = useRef(0);
+
+    useEffect(() => {
+        setPrevPoints(totalPoints)
+        setOpponentPrevPoints(opponentTotalPoints)
+
+        computeTotal()
+    }, [])
 
     const computeTotal = () => {
         for (const [key, value] of Object.entries(finalScore)) {
@@ -14,52 +23,53 @@ const DisplayScore = ({ finalScore, opponentFinalScore }) => {
                 case 'diamonds':
                 case 'primiera':
                     if (finalScore[key] > opponentFinalScore[key])
-                        totalScore++
+                        totalScore.current++
                     else if (opponentFinalScore[key] > finalScore[key])
-                        opponentTotalScore++
+                        opponentTotalScore.current++
 
-                    console.debug(key, totalScore, opponentTotalScore)
+                    console.debug(key, totalScore.current, opponentTotalScore.current)
 
                     break
                 case 'settebello':
                     if (finalScore[key])
-                        totalScore++
+                        totalScore.current++
                     else
-                        opponentTotalScore++
+                        opponentTotalScore.current++
 
-                    console.debug(key, totalScore, opponentTotalScore)
+                    console.debug(key, totalScore.current, opponentTotalScore.current)
 
                     break
                 case 'piccola':
                     if (finalScore[key])
-                        totalScore += finalScore[key]+1
+                        totalScore.current += finalScore[key]+1
                     else if (opponentFinalScore[key])
-                        opponentTotalScore += opponentFinalScore[key]+1
+                        opponentTotalScore.current += opponentFinalScore[key]+1
 
-                    console.debug(key, totalScore, opponentTotalScore)
+                    console.debug(key, totalScore.current, opponentTotalScore.current)
 
                     break
                 case 'grande':
                     if (finalScore[key])
-                        totalScore += 5
+                        totalScore.current += 5
                     else if (opponentFinalScore[key])
-                        opponentTotalScore += 5
+                        opponentTotalScore.current += 5
 
-                    console.debug(key, totalScore, opponentTotalScore)
+                    console.debug(key, totalScore.current, opponentTotalScore.current)
 
                     break
                 case 'scope':
-                    totalScore += finalScore[key]
-                    opponentTotalScore += opponentFinalScore[key]
+                    totalScore.current += finalScore[key]
+                    opponentTotalScore.current += opponentFinalScore[key]
 
-                    console.debug(key, totalScore, opponentTotalScore)
+                    console.debug(key, totalScore.current, opponentTotalScore.current)
 
                     break
             }
         }
-    }
 
-    computeTotal()
+        setTotalPoints(prevPoints => prevPoints+totalScore.current)
+        setOpponentTotalPoints(prevPoints => prevPoints+opponentTotalScore.current)
+    }
 
     return (
         <>
@@ -83,7 +93,13 @@ const DisplayScore = ({ finalScore, opponentFinalScore }) => {
                 Primiera: {finalScore.primiera}
                 <br/>
                 <br/>
-                Total: {totalScore}
+                Game points: {totalScore.current}
+                <br/>
+                {gameType === "full" && 
+                    <>
+                        Total points: {prevPoints} + {totalScore.current} {"->"} {totalPoints}
+                    </>
+                }
             </div>
 
             <br/>
@@ -109,14 +125,24 @@ const DisplayScore = ({ finalScore, opponentFinalScore }) => {
                 Primiera: {opponentFinalScore.primiera}
                 <br/>
                 <br/>
-                Total: {opponentTotalScore}
+                Game points: {opponentTotalScore.current}
+                <br/>
+                {gameType === "full" && 
+                    <>
+                        Total points: {opponentPrevPoints} + {opponentTotalScore.current} {"->"} {opponentTotalPoints}
+                    </>
+                }
             </div>
 
             <br/>
             <br/>
             <br/>
 
-            <button onClick={() => window.location.reload(false)}> Play again </button>
+            {(gameType === "fast" || (totalPoints >= 51 || opponentTotalPoints >= 51)) ? 
+                <button onClick={() => window.location.reload(false)}> Play again </button>
+                :
+                <button onClick={() => { setDeck(""); setGameIsOver(false) }}> Next hand </button>
+            }
         </>
     );
 };

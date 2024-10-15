@@ -36,7 +36,7 @@ const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard,
 
   return (
     <>
-      {!loaded &&
+      {(!loaded && origin === "opponent") &&
         <img
           draggable={false}
           src="https://www.deckofcardsapi.com/static/img/back.png"

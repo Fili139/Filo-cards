@@ -26,7 +26,7 @@ function App() {
   const server = "https://ciapachinze.onrender.com";
   //const server = "http://localhost:3000";
 
-  const version = "beta 8.0"
+  const version = "beta 9.0"
 
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
   //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
@@ -66,6 +66,10 @@ function App() {
     setFinalScore,
     opponentFinalScore,
     setOpponentFinalScore,
+    totalPoints,
+    setTotalPoints,
+    opponentTotalPoints,
+    setOpponentTotalPoints,
     isLastToTake,
     setIsLastToTake,
     canDraw,
@@ -105,10 +109,10 @@ function App() {
 
   /* BOT LOGIC */
   useEffect(() => {
-    const getDeckOffline = async () => { console.debug("osiride", isMyTurn); await getDeck(); setCardsDealt(true) }
+    const getDeckOffline = async () => { await getDeck(); setCardsDealt(true) }
 
     if (mode === "single" && !deck && gameType) getDeckOffline()
-  }, [mode, gameType])
+  }, [mode, deck, gameType])
 
   useEffect(() => {
     const botDraw = async () => { await botDrawCards() }
@@ -138,6 +142,8 @@ function App() {
 
   useEffect(() => {
     if (mode === "multi") {
+      setGameType("fast")
+
       const newSocket = io(server);
 
       setSocket(newSocket);
@@ -194,8 +200,10 @@ function App() {
         setToastMessage(toast)
 
         setTimeout(() => {
-          window.location.reload(false)
-        }, 3000);
+          setTable([])
+          setHand([])
+          setDeck("")
+        }, 2500);
       });
 
       newSocket.on('is15or30', (remaining, toast) => {
@@ -302,20 +310,30 @@ function App() {
 
   useEffect(() => {
     if (remaining <= 0 && hand.length === 0 && opponentsHand === 0 && !gameIsOver) {
-      if (mode === "single") {
-        if (botHand.length === 0)
-          setGameIsOver(true)
-      }
-      else setGameIsOver(true)
+        if (mode === "single") {
+          if (botHand.length === 0) {
+            setTimeout(() => {
+              setGameIsOver(true)
+            }, 2500)
+          }
+        }
+        else setGameIsOver(true)
     }
   }, [remaining, hand, opponentsHand, botHand]);
 
   useEffect(() => {
-    if (gameIsOver)
+    if (gameIsOver) {
       computeScore()
+      if (mode === "single") computeScore(true)
+    }
+  else {
+    setScope(0)
+    setOpponentScope(0)
 
-    if (mode === "single")
-      computeScore(true)
+    setFinalScore({})
+    setOpponentFinalScore({})
+  }
+
   }, [gameIsOver]);
 
   useEffect(() => {
@@ -385,10 +403,12 @@ function App() {
           if (mode === "multi") socket.emit('aMonte', [toastMonte, "error"], room)
 
           setToastMessage([toastMonte, "error"])
-          
+
           setTimeout(() => {
-            window.location.reload(false)
-          }, 3000);
+            setTable([])
+            setHand([])
+            setDeck("")
+          }, 2500);
 
           return
         }
@@ -714,7 +734,7 @@ function App() {
     setRoom("")
     setSocket("")
     setGameType("")
-    setIsMyTurn(false)
+    setIsMyTurn(true)
   }
 
   const MainMenuButton = () => {
@@ -930,6 +950,13 @@ function App() {
         <DisplayScore
           finalScore={finalScore}
           opponentFinalScore={opponentFinalScore}
+          totalPoints={totalPoints}
+          setTotalPoints={setTotalPoints}
+          opponentTotalPoints={opponentTotalPoints}
+          setOpponentTotalPoints={setOpponentTotalPoints}
+          gameType={gameType}
+          setDeck={setDeck}
+          setGameIsOver={setGameIsOver}
         />
       }
 

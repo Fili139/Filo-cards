@@ -6,14 +6,14 @@ export const useBaseState = () => {
 
   const [gameIsOver, setGameIsOver] = useState(false);
 
-  const [isMyTurn, setIsMyTurn] = useState(false);
+  const [isMyTurn, setIsMyTurn] = useState(true);
   
   const [cardsDealt, setCardsDealt] = useState(false);
 
   const [deck, setDeck] = useState("");
   const [hand, setHand] = useState([]);
   const [table, setTable] = useState([]);
-  const [remaining, setRemaining] = useState(52);
+  const [remaining, setRemaining] = useState(40);
   
   const [opponentsHand, setOpponentsHand] = useState(0);
   const [opponentPlayedCards, setOpponentPlayedCards] = useState([]);
@@ -27,6 +27,8 @@ export const useBaseState = () => {
 
   const [finalScore, setFinalScore] = useState({});
   const [opponentFinalScore, setOpponentFinalScore] = useState({});
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [opponentTotalPoints, setOpponentTotalPoints] = useState(0);
 
   const [isLastToTake, setIsLastToTake] = useState(false);
 
@@ -72,6 +74,10 @@ export const useBaseState = () => {
     setFinalScore,
     opponentFinalScore,
     setOpponentFinalScore,
+    totalPoints,
+    setTotalPoints,
+    opponentTotalPoints,
+    setOpponentTotalPoints,
     isLastToTake,
     setIsLastToTake,
     canDraw,
