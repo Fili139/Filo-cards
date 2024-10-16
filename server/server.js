@@ -141,6 +141,10 @@ io.on('connection', (socket) => {
     socket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande, primiera, room) => {
         socket.to(room).emit('playerScore', cards, diamonds, scope, settebello, piccola, grande, primiera);
     });
+
+    socket.on('nextHand', (room) => {
+        socket.to(room).emit('nextHand');
+    });
     
     // Gestisci la fine del turno da parte di un giocatore
     socket.on('endTurn', (room) => {

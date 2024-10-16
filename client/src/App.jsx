@@ -28,8 +28,8 @@ function App() {
 
   const version = "beta 9.0"
 
-  //const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
-  const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
+  const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
+  //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
 
   const {
     mode,
@@ -239,6 +239,20 @@ function App() {
           primiera: primiera
         })
       });
+
+      newSocket.on('nextHand', () => {
+        setDeck("")
+
+        setCardsDealt(false)
+  
+        setScope(0)
+        setOpponentScope(0)
+  
+        setFinalScore({})
+        setOpponentFinalScore({})
+  
+        setOpponentPlayedCards([])
+      });
   
       // Funzione di pulizia: disconnetti il socket quando il componente si smonta
       return () => {
@@ -333,8 +347,11 @@ function App() {
 
       setFinalScore({})
       setOpponentFinalScore({})
-      
+
       setOpponentPlayedCards([])
+
+      if (socket)
+        socket.emit("nextHand", room)
     }
   }, [gameIsOver]);
 
@@ -369,7 +386,7 @@ function App() {
       playerCount = await fetchPlayersInRoom()
 
     if (playerCount === 2 || mode === "single") {
-      await fetch("https://www.deckofcardsapi.com/api/deck/new/shuffle/?cards="+deckCards)
+      return await fetch("https://www.deckofcardsapi.com/api/deck/new/shuffle/?cards="+deckCards)
       .then((res) => res.json())
       .then(async (data) => {
         if (data.deck_id) {
@@ -386,7 +403,7 @@ function App() {
   }
 
   const dealCards = async (count=4, deckID, isBot=false) => {
-    await fetch("https://www.deckofcardsapi.com/api/deck/"+deckID+"/draw/?count="+count)
+    return await fetch("https://www.deckofcardsapi.com/api/deck/"+deckID+"/draw/?count="+count)
     .then((res) => res.json())
     .then(async (data) => {
       if (data.cards) {
@@ -951,7 +968,7 @@ function App() {
             <JoinRoomForm
               setRoom={setRoom}
               rooms={rooms}
-            /> 
+            />
           }
 
           <MainMenuButton />
