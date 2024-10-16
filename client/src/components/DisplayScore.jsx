@@ -2,7 +2,7 @@
 // DisplayScore.js
 import React, { useEffect, useState, useRef } from 'react';
 
-const DisplayScore = ({ finalScore, opponentFinalScore, totalPoints, setTotalPoints, opponentTotalPoints, setOpponentTotalPoints, gameType, setDeck, setGameIsOver }) => {
+const DisplayScore = ({ finalScore, opponentFinalScore, totalPoints, setTotalPoints, opponentTotalPoints, setOpponentTotalPoints, gameType, setGameIsOver }) => {
     const [prevPoints, setPrevPoints] = useState(0)
     const [opponentPrevPoints, setOpponentPrevPoints] = useState(0)
 
@@ -141,7 +141,7 @@ const DisplayScore = ({ finalScore, opponentFinalScore, totalPoints, setTotalPoi
             {(gameType === "fast" || (totalPoints >= 51 || opponentTotalPoints >= 51)) ? 
                 <button onClick={() => window.location.reload(false)}> Play again </button>
                 :
-                <button onClick={() => { setDeck(""); setGameIsOver(false) }}> Next hand </button>
+                <button onClick={() => setGameIsOver(false) }> Next hand </button>
             }
         </>
     );

@@ -23,13 +23,13 @@ import './App.css'
 
 
 function App() {
-  const server = "https://ciapachinze.onrender.com";
-  //const server = "http://localhost:3000";
+  //const server = "https://ciapachinze.onrender.com";
+  const server = "http://localhost:3000";
 
   const version = "beta 9.0"
 
-  const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
-  //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
+  //const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
+  const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
 
   const {
     mode,
@@ -115,15 +115,14 @@ function App() {
   }, [mode, deck, gameType])
 
   useEffect(() => {
-    const botDraw = async () => { await botDrawCards() }
-    const botMove = async () => { await botMakeMove() }
+    const botDraw = async () => { if (await botDrawCards()) setIsMyTurn(true) }
+    const botMove = async () => { await botMakeMove(); setIsMyTurn(true) }
 
     if (!isMyTurn && mode === "single") {
       if (botHand.length <= 0) {
         if (cardsDealt) {
           setTimeout(() => {
             botDraw()
-            setIsMyTurn(true)
           }, getRandomIntInclusive(700, 1500))
         }
         else
@@ -132,11 +131,10 @@ function App() {
       else {
         setTimeout(() => {
           botMove()
-          setIsMyTurn(true)
         }, getRandomIntInclusive(1000, 2000))
       }  
     }
-  }, [isMyTurn])
+  }, [isMyTurn, deck, gameType])
   /* END BOT LOGIC */
     
 
@@ -298,9 +296,8 @@ function App() {
   }, [playerID, currentTurn]);
 
   useEffect(() => {
-    if (socket) {
+    if (socket)
       socket.emit("scopeUpdate", scope, room)
-    }
   }, [scope]);
 
   useEffect(() => {
@@ -326,14 +323,19 @@ function App() {
       computeScore()
       if (mode === "single") computeScore(true)
     }
-  else {
-    setScope(0)
-    setOpponentScope(0)
+    else {
+      setDeck("")
 
-    setFinalScore({})
-    setOpponentFinalScore({})
-  }
+      setCardsDealt(false)
 
+      setScope(0)
+      setOpponentScope(0)
+
+      setFinalScore({})
+      setOpponentFinalScore({})
+      
+      setOpponentPlayedCards([])
+    }
   }, [gameIsOver]);
 
   useEffect(() => {
@@ -361,19 +363,19 @@ function App() {
     }
   };
 
-  const getDeck = async () => {
+  const getDeck = async (isBot=false) => {
     let playerCount = 0
     if (mode === "multi")
       playerCount = await fetchPlayersInRoom()
 
     if (playerCount === 2 || mode === "single") {
-      fetch("https://www.deckofcardsapi.com/api/deck/new/shuffle/?cards="+deckCards)
+      await fetch("https://www.deckofcardsapi.com/api/deck/new/shuffle/?cards="+deckCards)
       .then((res) => res.json())
       .then(async (data) => {
         if (data.deck_id) {
           setDeck(data.deck_id)
           
-          await dealCards(4, data.deck_id)
+          await dealCards(4, data.deck_id, isBot)
 
           if (mode === "multi") socket.emit('deckID', data.deck_id, room);
 
@@ -383,8 +385,8 @@ function App() {
     }
   }
 
-  const dealCards = async (count=4, deckID) => {
-    fetch("https://www.deckofcardsapi.com/api/deck/"+deckID+"/draw/?count="+count)
+  const dealCards = async (count=4, deckID, isBot=false) => {
+    await fetch("https://www.deckofcardsapi.com/api/deck/"+deckID+"/draw/?count="+count)
     .then((res) => res.json())
     .then(async (data) => {
       if (data.cards) {
@@ -407,6 +409,8 @@ function App() {
           setTimeout(() => {
             setTable([])
             setHand([])
+            setBotHand([])
+            setOpponentPlayedCards([])
             setDeck("")
           }, 2500);
 
@@ -417,10 +421,18 @@ function App() {
 
         // WORKAROUND -> NON BELLO
         if (is15or30 == 15 || is15or30 == 30) {
-          if (is15or30 == 15)
-            setScope(prev => prev)
-          else if (is15or30 == 30)
-            setScope(prev => prev+1)
+          if (is15or30 == 15) {
+            if (isBot)
+              setOpponentScope(prev => prev)
+            else
+              setScope(prev => prev)
+          }
+          else if (is15or30 == 30) {
+            if (isBot)
+              setOpponentScope(prev => prev+1)
+            else
+              setScope(prev => prev+1)
+          }
 
           const tableCards = data.cards.map(card => card.code);
           const tableCardsTaken = tableCards.join(",")
@@ -430,7 +442,10 @@ function App() {
 
           setToastMessage([toast15or30, "success"])
 
-          await addToPile(tableCardsTaken, tableCards, deckID)
+          if (isBot)
+            await botAddToPile(tableCardsTaken, tableCards, deckID)
+          else
+            await addToPile(tableCardsTaken, tableCards, deckID)
 
         }
         else
@@ -444,7 +459,7 @@ function App() {
 
       setCanDraw(false)
 
-      await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/draw/?count="+count)
+      return await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/draw/?count="+count)
       .then((res) => res.json())
       .then((data) => {
         if (data.cards) {
@@ -470,15 +485,18 @@ function App() {
           if (mode === "multi") socket.emit('playerDraw', count, data.remaining, room);
 
           setCanDraw(true)
+
+          return true
         }
       })
     }
+    return false
   }
 
   const addToPile = async (cardsTaken, selectedTableCards, deck_id=deck) => {
     let pile_name = playerID ? playerID : "player_"+deck_id
 
-    return fetch("https://www.deckofcardsapi.com/api/deck/"+deck_id+"/pile/"+pile_name+"_pile/add/?cards="+cardsTaken)
+    return await fetch("https://www.deckofcardsapi.com/api/deck/"+deck_id+"/pile/"+pile_name+"_pile/add/?cards="+cardsTaken)
     .then((res) => res.json())
     .then(async (data) => {
       if (data.piles[pile_name+"_pile"]) {
@@ -634,7 +652,7 @@ function App() {
 
     let pile_name = playerID ? playerID : (isBot ? "bot_"+deck : "player_"+deck)
 
-    return fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/pile/"+pile_name+"_pile/list/")
+    return await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/pile/"+pile_name+"_pile/list/")
     .then((res) => res.json())
     .then((data) => {
       if (data.piles[pile_name+"_pile"]) {
@@ -751,7 +769,7 @@ function App() {
   const botDrawCards = async (count=3) => {
     if (remaining-count >= 0) {
 
-      await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/draw/?count="+count)
+      return await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/draw/?count="+count)
       .then((res) => res.json())
       .then((data) => {
         if (data.cards) {
@@ -768,9 +786,13 @@ function App() {
             setOpponentScope(prev => prev+3)
             setOpponentPlayedCards(data.cards)
           }
+
+          return true
         }
       })
     }
+    else
+      return false
   }
 
   const botAddCard = async (botSelectedCard) => {
@@ -794,11 +816,11 @@ function App() {
     return await botAddToPile(cardsTaken, botSelectedTableCard)
   }
 
-  const botAddToPile = async (cardsTaken, selectedTableCards) => {
-    return fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/pile/bot_"+deck+"_pile/add/?cards="+cardsTaken)
+  const botAddToPile = async (cardsTaken, selectedTableCards, deck_id=deck) => {
+    return await fetch("https://www.deckofcardsapi.com/api/deck/"+deck_id+"/pile/bot_"+deck_id+"_pile/add/?cards="+cardsTaken)
     .then((res) => res.json())
     .then(async (data) => {
-      if (data.piles["bot_"+deck+"_pile"]) {
+      if (data.piles["bot_"+deck_id+"_pile"]) {
 
         const newTable = table.filter(x => !selectedTableCards.includes(x.code))
 
@@ -891,7 +913,7 @@ function App() {
       <Toaster
         toastOptions={{
           // Define default options
-          duration: 4250
+          duration: 3750
         }}
       />
 
@@ -955,7 +977,6 @@ function App() {
           opponentTotalPoints={opponentTotalPoints}
           setOpponentTotalPoints={setOpponentTotalPoints}
           gameType={gameType}
-          setDeck={setDeck}
           setGameIsOver={setGameIsOver}
         />
       }
@@ -972,7 +993,7 @@ function App() {
                 return (
                   <li key={key}>
                     {player.name} {player.id.replaceAll("-", "") === playerID ? '(you)' : ''}
-                  </li>  
+                  </li>
                 )
               })}
 
@@ -980,14 +1001,17 @@ function App() {
                 <>
                   <br/>
                   {players.length === 2 ?
-                    <button onClick={() => getDeck()}>Deal cards</button>
+                    <button onClick={async () => await getDeck() }>Deal cards</button>
                   :
                     <p>2 players needed to start the game</p>
                   }
+
+                  <br/>
+
+                  <MainMenuButton />
                 </>
               }
 
-              <MainMenuButton />
             </>
           }
 
@@ -1025,8 +1049,8 @@ function App() {
 
           {(deck && hand.length <= 0 && isMyTurn) &&
               <button className={"button-move"} disabled={!canDraw} onClick={async () => {
-                await drawCards()
-                endTurn()
+                if (await drawCards())
+                  endTurn()
               }}>Draw cards</button>
           }
 

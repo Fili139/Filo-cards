@@ -1,12 +1,13 @@
 Il 7 di cuori può valere come un qualunque numero (perchè è molto fluido) se serve per fare 15 o 30 nella tavola iniziale o meno di 10 nella mano
-Possibilità di scegliere se partita veloce o match a 51 punti
-    Loop partita fino a 51 punti
 Sviluppo grafica e UI
 Eliminare la stanza quando si visualizza il punteggio (occhio se si implementa il sistema di loop partita in contemporanea)
 4 giocatori
 Bot più intelligente
 Cambiare turno del giocatore che dà le carte se modalità full
-Mostrare l'ultima carta giocata dal bot prima di mostrare i risultati
+Scegliere difficoltà bot
+Modalità fast/full anche online
+***Possibilità di scegliere se partita veloce o match a 51 punti / Loop partita fino a 51 punti***
+***Mostrare l'ultima carta giocata dal bot prima di mostrare i risultati***
 ***Partita a monte se 2 o più assi nella tavola iniziale***
 ***Messaggio per utente***
 ***Offline mode***

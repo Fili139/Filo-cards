@@ -6,7 +6,7 @@ export const useBaseState = () => {
 
   const [gameIsOver, setGameIsOver] = useState(false);
 
-  const [isMyTurn, setIsMyTurn] = useState(true);
+  const [isMyTurn, setIsMyTurn] = useState(false);
   
   const [cardsDealt, setCardsDealt] = useState(false);
 
