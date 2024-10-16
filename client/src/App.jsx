@@ -23,10 +23,10 @@ import './App.css'
 
 
 function App() {
-  //const server = "https://ciapachinze.onrender.com";
-  const server = "http://localhost:3000";
+  const server = "https://ciapachinze.onrender.com";
+  //const server = "http://localhost:3000";
 
-  const version = "beta 9.0"
+  const version = "beta 1.0.0"
 
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
   //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
@@ -140,8 +140,6 @@ function App() {
 
   useEffect(() => {
     if (mode === "multi") {
-      setGameType("fast")
-
       const newSocket = io(server);
 
       setSocket(newSocket);
@@ -161,14 +159,18 @@ function App() {
         setDeck(deck_id)
       });
   
-      newSocket.on('playersUpdate', ({ players, currentTurn }) => {
+      newSocket.on('playersUpdate', ({ players, gameType, currentTurn }) => {
         //console.debug(players)
 
+        console.debug(players, gameType, currentTurn)
+
         setPlayers(players);
+        setGameType(gameType);
         setCurrentTurn(currentTurn);
       });
   
       newSocket.on('turnUpdate', ({ currentTurn }) => {
+        console.debug(currentTurn, playerID)
         setCurrentTurn(currentTurn);
       });
       
@@ -201,6 +203,10 @@ function App() {
           setTable([])
           setHand([])
           setDeck("")
+          setOpponentPlayedCards([])
+          setCardsDealt(false)
+          setScope(0)
+          setOpponentScope(0)
         }, 2500);
       });
 
@@ -241,16 +247,18 @@ function App() {
       });
 
       newSocket.on('nextHand', () => {
+        setGameIsOver(false)
+        
         setDeck("")
-
+        
         setCardsDealt(false)
-  
+        
         setScope(0)
         setOpponentScope(0)
-  
+        
         setFinalScore({})
         setOpponentFinalScore({})
-  
+        
         setOpponentPlayedCards([])
       });
   
@@ -276,7 +284,7 @@ function App() {
 
   useEffect(() => {
     if (socket)
-      socket.emit('joinRoom', room, name);
+      socket.emit('joinRoom', room, name, gameType);
   }, [room])
 
   useEffect(() => {
@@ -325,10 +333,14 @@ function App() {
           if (botHand.length === 0) {
             setTimeout(() => {
               setGameIsOver(true)
-            }, 2500)
+            }, 2000)
           }
         }
-        else setGameIsOver(true)
+        else {
+          setTimeout(() => {
+            setGameIsOver(true)
+          }, 2000)
+        }
     }
   }, [remaining, hand, opponentsHand, botHand]);
 
@@ -419,16 +431,24 @@ function App() {
 
         if (aces >= 2) {
           const toastMonte = "A monte! 2 aces dealt"
+
+          setCanDraw(false)
+
           if (mode === "multi") socket.emit('aMonte', [toastMonte, "error"], room)
 
           setToastMessage([toastMonte, "error"])
 
           setTimeout(() => {
+            setBotHand([])
             setTable([])
             setHand([])
-            setBotHand([])
-            setOpponentPlayedCards([])
             setDeck("")
+            setOpponentPlayedCards([])
+            setCardsDealt(false)
+            setScope(0)
+            setOpponentScope(0)
+
+            setCanDraw(true)
           }, 2500);
 
           return
@@ -965,10 +985,19 @@ function App() {
               setName={setName}
             />
             :
-            <JoinRoomForm
-              setRoom={setRoom}
-              rooms={rooms}
-            />
+            <>
+              {(!room && !gameType) ?
+                <ChooseGameTypeForm
+                  setGameType={setGameType}
+                />
+                :
+                <JoinRoomForm
+                  setRoom={setRoom}
+                  rooms={rooms}
+                  gameType={gameType}
+                />
+              }
+            </>
           }
 
           <MainMenuButton />

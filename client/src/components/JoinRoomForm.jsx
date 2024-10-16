@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form'
 import RoomsAvailable from './RoomsAvailable'
 
-const JoinRoomForm = ({ setRoom, rooms }) => {
+const JoinRoomForm = ({ setRoom, rooms, gameType }) => {
     const { register, handleSubmit } = useForm();
 
     const joinRoom = (data) => setRoom(data.room)
@@ -10,6 +10,7 @@ const JoinRoomForm = ({ setRoom, rooms }) => {
         <>
             <RoomsAvailable 
                 rooms={rooms}
+                gameType={gameType}
                 setRoom={setRoom}
             />
 

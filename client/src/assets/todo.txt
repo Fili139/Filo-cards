@@ -5,7 +5,7 @@ Eliminare la stanza quando si visualizza il punteggio (occhio se si implementa i
 Bot più intelligente
 Cambiare turno del giocatore che dà le carte se modalità full
 Scegliere difficoltà bot
-Modalità fast/full anche online
+***Modalità fast/full anche online***
 ***Possibilità di scegliere se partita veloce o match a 51 punti / Loop partita fino a 51 punti***
 ***Mostrare l'ultima carta giocata dal bot prima di mostrare i risultati***
 ***Partita a monte se 2 o più assi nella tavola iniziale***

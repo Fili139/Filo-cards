@@ -56,13 +56,14 @@ io.on('connection', (socket) => {
         callback({ count: clientCount });
     });   
 
-    socket.on('joinRoom', (room, name) => {
+    socket.on('joinRoom', (room, name, gameType) => {
         console.log(`Il giocatore: ${name} (${socket.id})`, "vuole entrare nella room", room);
 
         // Se la room non esiste ancora, creala
         if (!rooms[room]) {
             rooms[room] = {
                 players: [],
+                gameType: gameType,
                 currentTurnIndex: 0,
             };
         }
@@ -81,6 +82,7 @@ io.on('connection', (socket) => {
             // Notifica tutti i giocatori nella room del nuovo stato
             io.to(room).emit('playersUpdate', {
                 players: rooms[room].players,
+                gameType: rooms[room].gameType,
                 currentTurn: rooms[room].players[rooms[room].currentTurnIndex].id,
             });
         }
