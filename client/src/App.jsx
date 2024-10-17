@@ -26,7 +26,7 @@ function App() {
   const server = "https://ciapachinze.onrender.com";
   //const server = "http://localhost:3000";
 
-  const version = "beta 1.0.0"
+  const version = "beta 1.1.0"
 
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
   //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
@@ -162,15 +162,12 @@ function App() {
       newSocket.on('playersUpdate', ({ players, gameType, currentTurn }) => {
         //console.debug(players)
 
-        console.debug(players, gameType, currentTurn)
-
         setPlayers(players);
         setGameType(gameType);
         setCurrentTurn(currentTurn);
       });
   
       newSocket.on('turnUpdate', ({ currentTurn }) => {
-        console.debug(currentTurn, playerID)
         setCurrentTurn(currentTurn);
       });
       
@@ -196,6 +193,10 @@ function App() {
         setOpponentPlayedCards(cards)
       });
 
+      newSocket.on('toast', (toast) => {
+        setToastMessage(toast)
+      });
+
       newSocket.on('aMonte', (toast) => {
         setToastMessage(toast)
 
@@ -207,6 +208,16 @@ function App() {
           setCardsDealt(false)
           setScope(0)
           setOpponentScope(0)
+        }, 2500);
+      });
+
+      newSocket.on('mattata', (toast) => {
+        setToastMessage(toast)
+
+        setOpponentTotalPoints(prevPoints => prevPoints+51)
+
+        setTimeout(() => {
+          setGameIsOver(true)
         }, 2500);
       });
 
@@ -235,6 +246,8 @@ function App() {
       });
 
       newSocket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande, primiera) => {
+        checkForCapottu(piccola, grande, true, false)
+
         setOpponentFinalScore({
           cards: cards,
           diamonds: diamonds,
@@ -429,6 +442,23 @@ function App() {
             aces++
         }
 
+        const allEqual = data.cards.every(card => card.code === data.cards[0].code);
+
+        if (allEqual) {
+          const toastMattata = "Mattata! Alle cards dealt are equal, game ends!"
+
+          if (mode === "multi") socket.emit('mattata', [toastMattata, "error"], room)
+
+          setToastMessage([toastMattata, "success"])
+
+          setTotalPoints(prevPoints => prevPoints+51)
+
+          setTimeout(() => {
+            setGameIsOver(true)
+          }, 3500);
+
+          return
+        }
         if (aces >= 2) {
           const toastMonte = "A monte! 2 aces dealt"
 
@@ -510,13 +540,26 @@ function App() {
             setResetOpponentHand(true)
           
           if (checkTris(data.cards)) {
+            const toastTris = "*TOC TOC* Tris!"
+            setToastMessage([toastTris, "success"])
+
             setScope(prev => prev+10)
-            if (mode === "multi") socket.emit('trisOrLess10', data.cards, room)
+            if (mode === "multi") {
+              socket.emit('trisOrLess10', data.cards, room)
+              socket.emit('toast', [toastTris, "error"], room)
+            }
           }
   
           if (checkLess10(data.cards)) {
+            const toastLess10 = "*TOC TOC* < 10!"
+            setToastMessage([toastLess10, "success"])
+
             setScope(prev => prev+3)
-            if (mode === "multi") socket.emit('trisOrLess10', data.cards, room)
+
+            if (mode === "multi") {
+              socket.emit('trisOrLess10', data.cards, room)
+              socket.emit('toast', [toastLess10, "error"], room)
+            }
           }
   
           if (mode === "multi") socket.emit('playerDraw', count, data.remaining, room);
@@ -539,14 +582,13 @@ function App() {
       if (data.piles[pile_name+"_pile"]) {
 
         const newTable = table.filter(x => !selectedTableCards.includes(x.code))
+        const newHand = hand.filter(x => x.code != selectedCard)
 
-        if (newTable.length == 0)
+        // ultime carte sul tavolo, non si può fare scopa
+        if (newTable.length == 0 && ((newHand.length !== 0 && opponentsHand !== 0) || remaining !== 36))
           setScope(prev => prev+1)
 
-        setHand(
-          hand.filter(x => x.code != selectedCard)
-        )
-
+        setHand(newHand)
         setTable(newTable)
 
         setSelectedCard("")
@@ -727,6 +769,8 @@ function App() {
 
         primiera = computePrimiera(pile)
 
+        checkForCapottu(piccola, grande, false, isBot)
+
         if (isBot) {
           setOpponentFinalScore({
             cards: pile.length,
@@ -789,7 +833,7 @@ function App() {
     setRoom("")
     setSocket("")
     setGameType("")
-    setIsMyTurn(true)
+    setIsMyTurn(false)
   }
 
   const MainMenuButton = () => {
@@ -799,6 +843,17 @@ function App() {
         <button onClick={() => goMainMenu()}>Go back</button>
       </>
     );
+  }
+
+  const checkForCapottu = (piccola, grande, isOpponent, isBot) => {
+    if (piccola === 6 && grande) {
+      const toastCapottu = "Capottu! Player took all the diamonds!"
+      const type = (isOpponent || isBot) ? "error" : "success"
+
+      (isOpponent || isBot) ? setOpponentTotalPoints(prevPoints => prevPoints+51) : setTotalPoints(prevPoints => prevPoints+51)
+
+      setToastMessage([toastCapottu, type])
+    }
   }
 
 
@@ -817,11 +872,17 @@ function App() {
           if (checkTris(data.cards)) {
             setOpponentScope(prev => prev+10)
             setOpponentPlayedCards(data.cards)
+
+            const toastTris = "*TOC TOC* Tris!"
+            setToastMessage([toastTris, "error"])
           }
   
           if (checkLess10(data.cards)) {
             setOpponentScope(prev => prev+3)
             setOpponentPlayedCards(data.cards)
+
+            const toastLess10 = "*TOC TOC* < 10!"
+            setToastMessage([toastLess10, "error"])
           }
 
           return true
@@ -859,23 +920,20 @@ function App() {
     .then(async (data) => {
       if (data.piles["bot_"+deck_id+"_pile"]) {
 
-        const newTable = table.filter(x => !selectedTableCards.includes(x.code))
-
-        if (newTable.length == 0)
-          setOpponentScope(prev => prev+1)
-
         const cardsTakenArray = cardsTaken.split(",")
         const botSelectedCard = cardsTakenArray.shift()
 
-        setBotHand(
-          botHand.filter(x => x.code != botSelectedCard)
-        )
-        
-        setIsLastToTake(false)
-        
-        //await awaitSetTimeout(5000)
-        
+        const newTable = table.filter(x => !selectedTableCards.includes(x.code))
+        const newBotHand = botHand.filter(x => x.code != botSelectedCard)
+
+        // ultime carte sul tavolo, non si può fare scopa
+        if (newTable.length == 0 &&           ((hand.length !== 0 && newBotHand !== 0) || remaining !== 36))
+          setOpponentScope(prev => prev+1)
+
+        setBotHand(newBotHand)
         setTable(newTable)
+
+        setIsLastToTake(false)  
 
         return true;
       }
@@ -974,7 +1032,7 @@ function App() {
           <br/>
           <br/>
 
-          <a href='https://it.wikipedia.org/wiki/Cirulla' target='_blank'>Click here to check the rules</a>
+          <a href='https://www.ilmugugnogenovese.it/gioco-della-cirulla-regole/2/' target='_blank'>Click here to check the rules</a>
         </>
       }
 

@@ -136,8 +136,16 @@ io.on('connection', (socket) => {
         socket.to(room).emit('is15or30', remaining, toast);
     });
 
+    socket.on('toast', (toast, room) => {
+        socket.to(room).emit('toast', toast);
+    });
+
     socket.on('aMonte', (toast, room) => {
         socket.to(room).emit('aMonte', toast);
+    });
+
+    socket.on('mattata', (toast, room) => {
+        socket.to(room).emit('mattata', toast);
     });
 
     socket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande, primiera, room) => {
