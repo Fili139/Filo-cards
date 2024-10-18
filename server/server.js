@@ -15,6 +15,7 @@ app.use(cors({
 }));
 
 const io = new Server(server, {
+    pingTimeout: 60000,
     cors: {
         origin: ['http://localhost:5173', 'https://ciapachinze.surge.sh'],  // Indica l'origine da cui accetti richieste
         methods: ["GET", "POST"]
@@ -171,8 +172,8 @@ io.on('connection', (socket) => {
     });
 
     // Quando un giocatore si disconnette
-    socket.on('disconnect', () => {
-        console.log(`Un giocatore si è disconnesso: ${socket.id}`);
+    socket.on('disconnect', (reason, details) => {
+        console.log(`Un giocatore si è disconnesso: ${socket.id} - (reason: ${reason}, details: ${details})`);
 
         // Rimuovi il giocatore da tutte le room a cui apparteneva
         for (const room in rooms) {

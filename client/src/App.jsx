@@ -23,8 +23,8 @@ import './App.css'
 
 
 function App() {
-  const server = "https://ciapachinze.onrender.com";
-  //const server = "http://localhost:3000";
+  //const server = "https://ciapachinze.onrender.com";
+  const server = "http://localhost:3000";
 
   const version = "beta 1.1.0"
 
