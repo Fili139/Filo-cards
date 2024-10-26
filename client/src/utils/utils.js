@@ -1,33 +1,49 @@
 export const getValueOfCard = (card) => {
-    if (card[0] === "A")
-      return '1'
-    else if (card[0] === "J")
-      return '8'
-    else if (card[0] === "Q")
-      return '9'
-    else if (card[0] === "K")
-      return '10'
-    return card[0];
+  if (card[0] === "A")
+    return '1'
+  else if (card[0] === "J")
+    return '8'
+  else if (card[0] === "Q")
+    return '9'
+  else if (card[0] === "K")
+    return '10'
+  return card[0];
 }
 
-export const check15or30 = (cards) => {
+export const getCardsSum = (cards, mattaValue="") => {
   let sum = 0
 
-  for (const card of cards)
+  for (const card of cards) {
+    if (card.code === "7H") {
+      if (mattaValue) {
+        sum += parseInt(getValueOfCard(mattaValue))
+        continue
+      }
+    }
+    
     sum += parseInt(getValueOfCard(card.code))
+  }
 
   return sum
 }
 
-export const checkTris = (cards) => {
-  return cards.every((card) => card.code[0] === cards[0].code[0])
+export const checkTris = (cards, mattaValue="") => {
+  return cards.every((card) => card.code[0] === cards[0].code[0] || mattaValue === cards[0].code[0])
 }
 
-export const checkLess10 = (cards) => {
+export const checkLess10 = (cards, mattaValue="") => {
   let sum = 0
 
-  for (const card of cards)
+  for (const card of cards) {
+    if (card.code === "7H") {
+      if (mattaValue) {
+        sum += parseInt(getValueOfCard(mattaValue))
+        continue
+      }
+    }
+
     sum += parseInt(getValueOfCard(card.code))
+  }
 
   return sum <= 9
 }
@@ -83,7 +99,65 @@ export const getRandomIntInclusive = (min, max) => {
 
   const randomNumber = Math.floor(Math.random() * (maxFloored - minCeiled + 1) + minCeiled);
 
-  return randomNumber// The maximum is inclusive and the minimum is inclusive
+  return randomNumber // The maximum is inclusive and the minimum is inclusive
+}
+
+export const getMattaOptions = (cards, totalSum) => {
+  const sumWithout7 = totalSum - 7
+  const cardsWithout7 = cards.filter(card => card.code !== "7H")
+
+  const allEqual = cardsWithout7.every(card => card.code[0] === cardsWithout7[0].code[0]);
+
+  const options = [{
+    options: "7",
+    type: "default value"
+  }]
+
+  //console.debug(cards, totalSum, sumWithout7, cardsWithout7, allEqual)
+
+  if (cards.length === 3) {
+    if (allEqual)
+      options.push({
+        options: cardsWithout7[0].code[0] === "1" ? "A" : cardsWithout7[0].code[0],
+        type: "tris"
+      })
+    
+    if (sumWithout7+1 <= 9) {
+      for (let i=0; i<9-sumWithout7; i++) {
+        options.push({
+          options: (9-sumWithout7-i).toString() === "1" ? "A" : (9-sumWithout7-i).toString(),
+          type: "< 10"
+        })
+      }
+    }
+  }
+  else if (cards.length === 4) {
+    if (allEqual)
+      options.push({
+        options: cardsWithout7[0].code[0] === "1" ? "A" : cardsWithout7[0].code[0],
+        type: "MATTATA"
+      })
+    
+    if (sumWithout7+1 <= 15) {
+      if (15-sumWithout7 <= 10) {
+        options.push({
+          options: (15-sumWithout7).toString() === "1" ? "A" : (15-sumWithout7).toString(),
+          type: "15 in table"
+        })
+      }
+    }
+
+    if (sumWithout7+1 <= 30) {
+      if (30-sumWithout7 <= 10) {
+        options.push({
+          options: (30-sumWithout7).toString() === "1" ? "A" : (30-sumWithout7).toString(),
+          type: "30 in table"
+        })
+      }
+    }
+  }
+
+  return options
 }
 
 export const checkCombinationFor15 = (cards, x, index=0, currentSum=0, currentCombination=[], bestCombination=null) => {
@@ -110,4 +184,4 @@ export const checkCombinationFor15 = (cards, x, index=0, currentSum=0, currentCo
 }
 
 
-export default { handleBeforeUnload, getValueOfCard, check15or30, checkTris, checkLess10, computePrimiera, getRandomIntInclusive, checkCombinationFor15, grandeCondition, piccolaCondition };
+export default { handleBeforeUnload, getValueOfCard, getCardsSum, checkTris, checkLess10, computePrimiera, getRandomIntInclusive, getMattaOptions, checkCombinationFor15, grandeCondition, piccolaCondition };

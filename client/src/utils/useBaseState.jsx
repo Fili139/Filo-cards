@@ -33,11 +33,14 @@ export const useBaseState = () => {
   const [isLastToTake, setIsLastToTake] = useState(false);
 
   const [canDraw, setCanDraw] = useState(true)
+  const [canDeal, setCanDeal] = useState(true)
   const [canPlay, setCanPlay] = useState(true)
 
   const [toastMessage, setToastMessage] = useState("")
 
   const [gameType, setGameType] = useState("")
+
+  const [matta, setMatta] = useState("")
 
   return {
     mode,
@@ -82,11 +85,15 @@ export const useBaseState = () => {
     setIsLastToTake,
     canDraw,
     setCanDraw,
+    canDeal,
+    setCanDeal,
     canPlay,
     setCanPlay,
     toastMessage,
     setToastMessage,
     gameType,
-    setGameType
+    setGameType,
+    matta,
+    setMatta
   };
 };

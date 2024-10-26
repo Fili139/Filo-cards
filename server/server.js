@@ -15,7 +15,12 @@ app.use(cors({
 }));
 
 const io = new Server(server, {
-    pingTimeout: 60000,
+    connectionStateRecovery: {
+        // the backup duration of the sessions and the packets
+        maxDisconnectionDuration: 2 * 60 * 1000,
+        // whether to skip middlewares upon successful recovery
+        skipMiddlewares: true,
+    },
     cors: {
         origin: ['http://localhost:5173', 'https://ciapachinze.surge.sh'],  // Indica l'origine da cui accetti richieste
         methods: ["GET", "POST"]
@@ -31,6 +36,11 @@ app.get('/', (req, res) => {
 
 // Quando un giocatore si connette
 io.on('connection', (socket) => {
+    if (socket.recovered) {
+        // recovery was successful: socket.id, socket.rooms and socket.data were restored
+        console.log(`Giocatore riconnesso: ${socket.id}, lista delle stanze: ${rooms}`);
+    }
+
     console.log(`Giocatore connesso: ${socket.id}`);
 
     // Invia l'ID al giocatore connesso
@@ -147,6 +157,10 @@ io.on('connection', (socket) => {
 
     socket.on('mattata', (toast, room) => {
         socket.to(room).emit('mattata', toast);
+    });
+
+    socket.on('matta', (matta, room) => {
+        socket.to(room).emit('matta', matta);
     });
 
     socket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande, primiera, room) => {

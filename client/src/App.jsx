@@ -6,7 +6,7 @@ import { useBaseState } from './utils/useBaseState'
 import { useOfflineState } from './utils/useOfflineState'
 import { useOnlineState } from './utils/useOnlineState'
 import { useBeforeUnloadEffect } from './utils/useBeforeUnloadEffect'
-import { getValueOfCard, checkTris, checkLess10, check15or30, grandeCondition, getRandomIntInclusive, checkCombinationFor15, piccolaCondition, computePrimiera } from './utils/utils'
+import { getValueOfCard, checkTris, checkLess10, getCardsSum, grandeCondition, getRandomIntInclusive, getMattaOptions, checkCombinationFor15, piccolaCondition, computePrimiera } from './utils/utils'
 
 import io from 'socket.io-client'
 
@@ -23,13 +23,13 @@ import './App.css'
 
 
 function App() {
-  //const server = "https://ciapachinze.onrender.com";
-  const server = "http://localhost:3000";
+  const server = "https://ciapachinze.onrender.com";
+  //const server = "http://localhost:3000";
 
-  const version = "beta 1.1.0"
+  const version = "beta 2.0.0"
 
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
-  //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7D";
+  //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7H";
 
   const {
     mode,
@@ -74,12 +74,16 @@ function App() {
     setIsLastToTake,
     canDraw,
     setCanDraw,
+    canDeal,
+    setCanDeal,
     canPlay,
     setCanPlay,
     toastMessage,
     setToastMessage,
     gameType,
-    setGameType
+    setGameType,
+    matta,
+    setMatta
   } = useBaseState();
 
   const {
@@ -140,12 +144,25 @@ function App() {
 
   useEffect(() => {
     if (mode === "multi") {
-      const newSocket = io(server);
+      const newSocket = io(server,
+        {
+          reconnectionDelay: 10000, // defaults to 1000
+          reconnectionDelayMax: 10000 // defaults to 5000
+        }
+      );
 
       setSocket(newSocket);
       
       newSocket.emit("getRooms")
       
+      newSocket.on("connect", () => {
+        if (socket.recovered) {
+          console.debug("Giocatore riconnesso")
+        } else {
+          console.debug("Giocatore connesso")
+        }
+      });
+
       newSocket.on('getRooms', (rooms) => {
         setRooms(rooms)
       });
@@ -221,6 +238,10 @@ function App() {
         }, 2500);
       });
 
+      newSocket.on('matta', (matta) => {
+        setMatta(matta)
+      });
+
       newSocket.on('is15or30', (remaining, toast) => {
         setRemaining(remaining)
 
@@ -261,7 +282,7 @@ function App() {
 
       newSocket.on('nextHand', () => {
         setGameIsOver(false)
-        
+
         setDeck("")
         
         setCardsDealt(false)
@@ -339,6 +360,11 @@ function App() {
     if (mode === "multi")
       endTurn()
   }, [cardsDealt]);
+
+  useEffect(() => {
+    if (mode === "multi")
+      socket.emit("matta", matta, room)
+  }, [matta]);
 
   useEffect(() => {
     if (remaining <= 0 && hand.length === 0 && opponentsHand === 0 && !gameIsOver) {
@@ -428,6 +454,9 @@ function App() {
   }
 
   const dealCards = async (count=4, deckID, isBot=false) => {
+
+    setCanDeal(false)
+
     return await fetch("https://www.deckofcardsapi.com/api/deck/"+deckID+"/draw/?count="+count)
     .then((res) => res.json())
     .then(async (data) => {
@@ -442,7 +471,7 @@ function App() {
             aces++
         }
 
-        const allEqual = data.cards.every(card => card.code === data.cards[0].code);
+        const allEqual = data.cards.every(card => card.code[0] === data.cards[0].code[0]);
 
         if (allEqual) {
           const toastMattata = "Mattata! Alle cards dealt are equal, game ends!"
@@ -459,6 +488,7 @@ function App() {
 
           return
         }
+
         if (aces >= 2) {
           const toastMonte = "A monte! 2 aces dealt"
 
@@ -484,17 +514,27 @@ function App() {
           return
         }
 
-        const is15or30 = check15or30(data.cards)
+        let cardsSum = getCardsSum(data.cards)
+
+        /* ********* */
+        // 7 DI CUORI
+        /* ********* */
+        const mattaValue = checkMatta(data.cards, cardsSum)
+        /* ********* */
+        // 7 DI CUORI
+        /* ********* */
+        
+        cardsSum = getCardsSum(data.cards, mattaValue)
 
         // WORKAROUND -> NON BELLO
-        if (is15or30 == 15 || is15or30 == 30) {
-          if (is15or30 == 15) {
+        if (cardsSum == 15 || cardsSum == 30) {
+          if (cardsSum == 15) {
             if (isBot)
               setOpponentScope(prev => prev)
             else
               setScope(prev => prev)
           }
-          else if (is15or30 == 30) {
+          else if (cardsSum == 30) {
             if (isBot)
               setOpponentScope(prev => prev+1)
             else
@@ -518,6 +558,8 @@ function App() {
         else
           if (mode === "multi") socket.emit('dealCards', data.cards, data.remaining, room);
       }
+
+      setCanDeal(true)
     })
   }
 
@@ -530,8 +572,19 @@ function App() {
       .then((res) => res.json())
       .then((data) => {
         if (data.cards) {
+
           setHand((prevHand) => [...prevHand, ...data.cards]);
           setRemaining(data.remaining)
+
+          const cardsSum = getCardsSum(data.cards)
+
+          /* ********* */
+          // 7 DI CUORI
+          /* ********* */
+          const mattaValue = checkMatta(data.cards, cardsSum)
+          /* ********* */
+          // 7 DI CUORI
+          /* ********* */
 
           // se è il giocatore 1 resetto sempre
           if (resetOpponentHand || (mode === "multi" && players[1].id.replaceAll("-", "") == playerID))
@@ -539,26 +592,34 @@ function App() {
           else
             setResetOpponentHand(true)
           
-          if (checkTris(data.cards)) {
+          let isTris = false
+
+          if (checkTris(data.cards, mattaValue)) {
+            isTris = true
+
             const toastTris = "*TOC TOC* Tris!"
             setToastMessage([toastTris, "success"])
 
             setScope(prev => prev+10)
+            
             if (mode === "multi") {
               socket.emit('trisOrLess10', data.cards, room)
               socket.emit('toast', [toastTris, "error"], room)
             }
           }
   
-          if (checkLess10(data.cards)) {
+          if (checkLess10(data.cards, mattaValue)) {
             const toastLess10 = "*TOC TOC* < 10!"
-            setToastMessage([toastLess10, "success"])
+            const toastBoth = "*TOC TOC* Tris AND < 10!"
+
+            isTris ? setToastMessage([toastBoth, "success"]) : setToastMessage([toastLess10, "success"])
 
             setScope(prev => prev+3)
 
             if (mode === "multi") {
               socket.emit('trisOrLess10', data.cards, room)
-              socket.emit('toast', [toastLess10, "error"], room)
+              
+              isTris ? socket.emit('toast', [toastBoth, "error"], room) : socket.emit('toast', [toastLess10, "error"], room)
             }
           }
   
@@ -580,6 +641,9 @@ function App() {
     .then((res) => res.json())
     .then(async (data) => {
       if (data.piles[pile_name+"_pile"]) {
+
+        if (cardsTaken.split(",").includes("7H"))
+          setMatta("")
 
         const newTable = table.filter(x => !selectedTableCards.includes(x.code))
         const newHand = hand.filter(x => x.code != selectedCard)
@@ -629,8 +693,12 @@ function App() {
 
     let moveIsValid = false;
 
+    // MATTA
+    const cardValue = selectedCard === "7H" ? (matta ? matta : selectedCard) : selectedCard
+    // MATTA
+
     // gestione asso
-    if (selectedCard[0] === "A") {
+    if (cardValue[0] === "A") {
       const tableCards = table.map(card => card.code);
       const tableCardsTaken = selectedCard+","+tableCards.join(",")
 
@@ -668,10 +736,33 @@ function App() {
       const cardsTaken = selectedCard+","+selectedTableCard.join(",")
       const cardsTakenArray = cardsTaken.split(",")
 
-      const playedCard = cardsTakenArray.shift()
+      // 7 DI CUORI
+      for (let i=0; i<cardsTakenArray.length; i++) {
+        if (cardsTakenArray[i] === "7H") {
+          if (matta) {
+            cardsTakenArray[i] = matta
+            break
+          }
+        }
+      }
+
+      let playedCard = ""
+      if (selectedCard === "7H") {
+        if (matta) {
+          playedCard = matta
+          cardsTakenArray.shift()
+        }
+        else
+          playedCard = cardsTakenArray.shift()
+      }
+      else 
+        playedCard = cardsTakenArray.shift()
+      // 7 DI CUORI
+
+      //const playedCard = selectedCard === "7H" ? (matta ? matta : cardsTakenArray.shift()) : cardsTakenArray.shift()
 
       if (cardsTakenArray.length === 1) {
-        if (getValueOfCard(playedCard) === getValueOfCard(cardsTakenArray[0]) || parseInt(getValueOfCard(playedCard)) + parseInt(getValueOfCard(cardsTakenArray[0])) === 15)
+        if (parseInt(getValueOfCard(playedCard)) === parseInt(getValueOfCard(cardsTakenArray[0])) || parseInt(getValueOfCard(playedCard)) + parseInt(getValueOfCard(cardsTakenArray[0])) === 15)
           moveIsValid = true
         else
           moveIsValid = false
@@ -854,6 +945,34 @@ function App() {
 
       setToastMessage([toastCapottu, type])
     }
+  }
+
+  const checkMatta = (cards, cardsSum) => {
+    const isMatta =  cards.some(card => card.code === "7H")
+
+    const cardsCodes = cards.map(card => card.code).join(", ")
+
+    if (isMatta) {
+      const mattaOptions = getMattaOptions(cards, cardsSum)
+      //console.debug("MATTA OPTIONS:", mattaOptions)
+
+      if (mattaOptions.length > 0) {
+        let prompt = "You drew the Matta (7H)! Choose what value should it get:\nThis is your hand: "+ cardsCodes + "\nPossible options:\n"
+        for (const option of mattaOptions)
+          prompt += option.options + " - " + option.type + "\n"
+
+        let windowPrompt = window.prompt(prompt)
+
+        while (!mattaOptions.some(option => option.options === windowPrompt))
+          windowPrompt = window.prompt(prompt)
+
+        setMatta(windowPrompt)
+
+        return windowPrompt
+      }
+    }
+
+    return ""
   }
 
 
@@ -1105,7 +1224,7 @@ function App() {
                 <>
                   <br/>
                   {players.length === 2 ?
-                    <button onClick={async () => await getDeck() }>Deal cards</button>
+                    <button disabled={!canDeal} onClick={async () => await getDeck() }>Deal cards</button>
                   :
                     <p>2 players needed to start the game</p>
                   }
@@ -1147,7 +1266,14 @@ function App() {
                 endTurn={endTurn}
               />
 
-              <p className='player-scope'>Scope: {scope}</p>
+              <p className='player-scope'>
+                Scope: {scope}
+                {matta &&
+                  <>
+                    {" - matta: "} {matta}
+                  </>
+                }
+              </p>
             </>
           }
 
