@@ -10,7 +10,7 @@ const port = process.env.PORT || 3000;
 
 // Configura il middleware cors
 app.use(cors({
-    origin: ['http://localhost:5173', 'https://ciapachinze.surge.sh'],  // Permetti l'accesso al frontend (React app)
+    origin: ['http://localhost:5173', 'https://ciapachinze.surge.sh', 'https://ciapachinze_beta.surge.sh'],  // Permetti l'accesso al frontend (React app)
     methods: ['GET', 'POST'],
 }));
 
@@ -22,7 +22,7 @@ const io = new Server(server, {
         skipMiddlewares: true,
     },
     cors: {
-        origin: ['http://localhost:5173', 'https://ciapachinze.surge.sh'],  // Indica l'origine da cui accetti richieste
+        origin: ['http://localhost:5173', 'https://ciapachinze.surge.sh', 'https://ciapachinze_beta.surge.sh'],  // Indica l'origine da cui accetti richieste
         methods: ["GET", "POST"]
     }
 });
