@@ -11,6 +11,7 @@
 .room {
   font-weight: bold;
 }
+
 .turn-message {
   font-weight: bold;
   color: #ffcc00;
@@ -32,7 +33,7 @@
 .footer {
   position: fixed;
   bottom: 0;
-  width: 77vw;
+  width: 85vw;
   padding-bottom: 1vh;
 }
 

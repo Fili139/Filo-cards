@@ -26,7 +26,7 @@ function App() {
   const server = "https://ciapachinze.onrender.com";
   //const server = "http://localhost:3000";
 
-  const version = "beta 2.0.0"
+  const version = "1.0.0"
 
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
   //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7H";
@@ -113,12 +113,20 @@ function App() {
 
   /* BOT LOGIC */
   useEffect(() => {
-    const getDeckOffline = async () => { await getDeck(); setCardsDealt(true) }
+    const getDeckOffline = async () => {
+      await getDeck();
+      setCardsDealt(true)
+      setIsMyTurn(false)
+    }
 
-    if (mode === "single" && !deck && gameType) getDeckOffline()
+    if (mode === "single" && !deck && gameType) {
+      if (isMyTurn)
+        getDeckOffline()
+    }
   }, [mode, deck, gameType])
 
   useEffect(() => {
+    const botDeal = async () => { await getDeck(true); setCardsDealt(true); setIsMyTurn(true) }
     const botDraw = async () => { if (await botDrawCards()) setIsMyTurn(true) }
     const botMove = async () => { await botMakeMove(); setIsMyTurn(true) }
 
@@ -129,8 +137,10 @@ function App() {
             botDraw()
           }, getRandomIntInclusive(700, 1500))
         }
-        else
-          setIsMyTurn(true)
+        else {
+          if (!deck)
+            botDeal()
+        }
       }
       else {
         setTimeout(() => {
@@ -156,8 +166,9 @@ function App() {
       newSocket.emit("getRooms")
       
       newSocket.on("connect", () => {
-        if (socket.recovered) {
+        if (socket?.recovered) {
           console.debug("Giocatore riconnesso")
+          newSocket.emit('playerReconnected', name, room)
         } else {
           console.debug("Giocatore connesso")
         }
@@ -419,6 +430,11 @@ function App() {
     }
   }, [toastMessage]);
 
+  useEffect(() => {
+    const coinFlip = getRandomIntInclusive(0, 1)
+
+    setIsMyTurn(!!coinFlip)
+  }, [])
 
   const endTurn = () => {
     if (mode === "multi") {
@@ -478,9 +494,14 @@ function App() {
 
           if (mode === "multi") socket.emit('mattata', [toastMattata, "error"], room)
 
-          setToastMessage([toastMattata, "success"])
-
-          setTotalPoints(prevPoints => prevPoints+51)
+          if (isBot) {
+            setToastMessage([toastMattata, "error"])
+            setOpponentTotalPoints(prevPoints => prevPoints+51)
+          }
+          else {
+            setToastMessage([toastMattata, "success"])
+            setTotalPoints(prevPoints => prevPoints+51)
+          }
 
           setTimeout(() => {
             setGameIsOver(true)
@@ -507,8 +528,10 @@ function App() {
             setCardsDealt(false)
             setScope(0)
             setOpponentScope(0)
-
             setCanDraw(true)
+
+            //DA VERIFICARE
+            setIsMyTurn(prev =>  !prev)
           }, 2500);
 
           return
@@ -519,7 +542,7 @@ function App() {
         /* ********* */
         // 7 DI CUORI
         /* ********* */
-        const mattaValue = checkMatta(data.cards, cardsSum)
+        const mattaValue = checkMatta(data.cards, cardsSum, isBot)
         /* ********* */
         // 7 DI CUORI
         /* ********* */
@@ -546,14 +569,18 @@ function App() {
           
           const toast15or30 = "15 or 30 in table! Table cards taken"
           if (mode === "multi") socket.emit('is15or30', data.remaining, [toast15or30, "error"], room)
-
-          setToastMessage([toast15or30, "success"])
-
-          if (isBot)
-            await botAddToPile(tableCardsTaken, tableCards, deckID)
+          
+          if (isBot)  
+            setToastMessage([toast15or30, "error"])
           else
-            await addToPile(tableCardsTaken, tableCards, deckID)
+            setToastMessage([toast15or30, "success"])
 
+          setTimeout(async () => {
+            if (isBot)
+              await botAddToPile(tableCardsTaken, tableCards, deckID)
+            else
+              await addToPile(tableCardsTaken, tableCards, deckID)
+          }, 2000)
         }
         else
           if (mode === "multi") socket.emit('dealCards', data.cards, data.remaining, room);
@@ -589,8 +616,8 @@ function App() {
           // se è il giocatore 1 resetto sempre
           if (resetOpponentHand || (mode === "multi" && players[1].id.replaceAll("-", "") == playerID))
             setOpponentPlayedCards([])
-          else
-            setResetOpponentHand(true)
+
+          setResetOpponentHand(true)
           
           let isTris = false
 
@@ -759,8 +786,6 @@ function App() {
         playedCard = cardsTakenArray.shift()
       // 7 DI CUORI
 
-      //const playedCard = selectedCard === "7H" ? (matta ? matta : cardsTakenArray.shift()) : cardsTakenArray.shift()
-
       if (cardsTakenArray.length === 1) {
         if (parseInt(getValueOfCard(playedCard)) === parseInt(getValueOfCard(cardsTakenArray[0])) || parseInt(getValueOfCard(playedCard)) + parseInt(getValueOfCard(cardsTakenArray[0])) === 15)
           moveIsValid = true
@@ -782,7 +807,6 @@ function App() {
       if (!moveIsValid) return moveIsValid;
 
       return await addToPile(cardsTaken, selectedTableCard)
-
     }
     else
       return addCardToTable()
@@ -791,9 +815,8 @@ function App() {
   const getPlayersInRoom = () => {
     return new Promise((resolve, reject) => {
       socket.emit('getPlayersInRoom', room, (response) => {
-        if (response) {
+        if (response)
           resolve(response.count);
-        }
       });
     });
   };
@@ -947,28 +970,35 @@ function App() {
     }
   }
 
-  const checkMatta = (cards, cardsSum) => {
+  const checkMatta = (cards, cardsSum, isBot=false) => {
     const isMatta =  cards.some(card => card.code === "7H")
 
     const cardsCodes = cards.map(card => card.code).join(", ")
 
     if (isMatta) {
       const mattaOptions = getMattaOptions(cards, cardsSum)
-      //console.debug("MATTA OPTIONS:", mattaOptions)
+      
+      if (!isBot) {
+        if (mattaOptions.length > 0) {
+          let prompt = "You drew the Matta (7H)! Choose what value should it get:\nThis is your hand: "+ cardsCodes + "\nPossible options:\n"
+          for (const option of mattaOptions)
+            prompt += option.options + " - " + option.type + "\n"
+  
+          let windowPrompt = window.prompt(prompt)
+  
+          while (!mattaOptions.some(option => option.options === windowPrompt))
+            windowPrompt = window.prompt(prompt)
+  
+          setMatta(windowPrompt)
+  
+          return windowPrompt
+        }
+      }
+      else {
+        // Bot ha pescato la matta
+        setMatta(mattaOptions[mattaOptions.length-1].options)
 
-      if (mattaOptions.length > 0) {
-        let prompt = "You drew the Matta (7H)! Choose what value should it get:\nThis is your hand: "+ cardsCodes + "\nPossible options:\n"
-        for (const option of mattaOptions)
-          prompt += option.options + " - " + option.type + "\n"
-
-        let windowPrompt = window.prompt(prompt)
-
-        while (!mattaOptions.some(option => option.options === windowPrompt))
-          windowPrompt = window.prompt(prompt)
-
-        setMatta(windowPrompt)
-
-        return windowPrompt
+        return mattaOptions[mattaOptions.length-1].options
       }
     }
 
@@ -988,7 +1018,23 @@ function App() {
           setBotHand((prevHand) => [...prevHand, ...data.cards]);
           setRemaining(data.remaining)
 
-          if (checkTris(data.cards)) {
+          const cardsSum = getCardsSum(data.cards)
+
+          /* ********* */
+          // 7 DI CUORI
+          /* ********* */
+          const mattaValue = checkMatta(data.cards, cardsSum, true)
+          /* ********* */
+          // 7 DI CUORI
+          /* ********* */
+
+          let isTris = false
+
+          if (checkTris(data.cards, mattaValue)) {
+            setResetOpponentHand(false)
+
+            isTris = true
+
             setOpponentScope(prev => prev+10)
             setOpponentPlayedCards(data.cards)
 
@@ -996,12 +1042,16 @@ function App() {
             setToastMessage([toastTris, "error"])
           }
   
-          if (checkLess10(data.cards)) {
+          if (checkLess10(data.cards, mattaValue)) {
+            setResetOpponentHand(false)
+            
             setOpponentScope(prev => prev+3)
             setOpponentPlayedCards(data.cards)
 
             const toastLess10 = "*TOC TOC* < 10!"
-            setToastMessage([toastLess10, "error"])
+            const toastBoth = "*TOC TOC* Tris AND < 10!"
+            
+            isTris ? setToastMessage([toastBoth, "error"]) : setToastMessage([toastLess10, "error"])
           }
 
           return true
@@ -1018,8 +1068,6 @@ function App() {
     )
 
     const playedCard = botHand.filter(x => x.code == botSelectedCard)
-    
-    //await awaitSetTimeout(500)
     
     // la mossa è sempre valida
     setTable((prevTable) => [...prevTable, ...playedCard]);
@@ -1045,8 +1093,11 @@ function App() {
         const newTable = table.filter(x => !selectedTableCards.includes(x.code))
         const newBotHand = botHand.filter(x => x.code != botSelectedCard)
 
+        if (cardsTaken.split(",").includes("7H"))
+          setMatta("")
+
         // ultime carte sul tavolo, non si può fare scopa
-        if (newTable.length == 0 &&           ((hand.length !== 0 && newBotHand !== 0) || remaining !== 36))
+        if (newTable.length == 0 && ((hand.length !== 0 && newBotHand !== 0) || remaining !== 36))
           setOpponentScope(prev => prev+1)
 
         setBotHand(newBotHand)
@@ -1067,38 +1118,51 @@ function App() {
       return [botCards[0], ""]
 
     const aceInTable = table.some(card => card.code[0] === "A")
-    const sumOfTable = tableCards.reduce((acc, card) => { return acc + parseInt(getValueOfCard(card)) }, 0)
+    //const sumOfTable = tableCards.reduce((acc, card) => { return acc + parseInt(getValueOfCard(card)) }, 0)
+    const cardsSum = getCardsSum(table, matta)
 
     // posso fare scopa
     for (const card of botCards) {
-      if (sumOfTable < 15) {
-        if (parseInt(getValueOfCard(card)) + sumOfTable === 15 || parseInt(getValueOfCard(card)) === sumOfTable)
+      const curCard = card === "7H" ? (matta ? matta : card) : card 
+
+      if (cardsSum < 15) {
+        if (parseInt(getValueOfCard(curCard)) + cardsSum === 15 || parseInt(getValueOfCard(curCard)) === cardsSum)
           return [card, tableCards]
       }
     }
 
     //faccio scopa con l'asso
     for (const card of botCards) {
-      if (card[0] === 'A' && !aceInTable)
+      if ((card[0] === 'A' || (card === "7H" && matta === 'A')) && !aceInTable)
         return [card, tableCards]
     }
 
     // posso fare 15 con più carte
     for (const card of botCards) {
-      const combinationFor15 = checkCombinationFor15(tableCards, parseInt(getValueOfCard(card)))
+      const curCard = card === "7H" ? (matta ? matta : card) : card
+
+      const combinationFor15 = checkCombinationFor15(matta, tableCards, parseInt(getValueOfCard(curCard)))
       if (combinationFor15 && combinationFor15.length > 0)
         return [card, combinationFor15]
     }
 
     // trovo carta uguale o faccio 15 con una carta
     for (const card of botCards) {
-      const validTableCard = tableCards.find(tableCard => ( getValueOfCard(tableCard) === getValueOfCard(card) || parseInt(getValueOfCard(tableCard)) + parseInt(getValueOfCard(card)) === 15 ))
+      const curCard = card === "7H" ? (matta ? matta : card) : card 
+
+      const validTableCard = tableCards.find(tableCard => {
+        const curTableCard = tableCard === "7H" ? (matta ? matta : tableCard) : tableCard 
+
+        if ( getValueOfCard(curTableCard) === getValueOfCard(curCard) || parseInt(getValueOfCard(curTableCard)) + parseInt(getValueOfCard(curCard)) === 15 )
+          return curTableCard
+      })
+
       if (validTableCard)
         return [card, [validTableCard]]
     }
 
     //caso base -> non posso prendere niente dal tavolo
-    return [botCards[0], ""]
+    return [botCards[getRandomIntInclusive(0, botCards.length-1)], ""]
   }
 
   const botMakeMove = async () => {
@@ -1208,7 +1272,7 @@ function App() {
         <>
           {(playerID && room) &&
             <>
-              <p className='room'>Room: {room}</p>
+              {/*<p className='room'>Room: {room}</p>*/}
 
               { isMyTurn ? <h3 className='turn-message'>It's your turn!</h3> : <h3 className='wait-message dots'>Waiting for the opponent</h3> }
 

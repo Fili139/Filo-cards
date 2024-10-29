@@ -1,9 +1,14 @@
 .table {
-    margin-top: 9vh;
+    position: fixed;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    bottom: 40vh;
+    left: 0;
+    right: 0;
 }
 
 .table-cards {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
+
 }

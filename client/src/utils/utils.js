@@ -28,7 +28,7 @@ export const getCardsSum = (cards, mattaValue="") => {
 }
 
 export const checkTris = (cards, mattaValue="") => {
-  return cards.every((card) => card.code[0] === cards[0].code[0] || mattaValue === cards[0].code[0])
+  return cards.every((card) => card.code[0] === cards[0].code[0] || (card.code === "7H" && mattaValue === cards[0].code[0]))
 }
 
 export const checkLess10 = (cards, mattaValue="") => {
@@ -116,12 +116,6 @@ export const getMattaOptions = (cards, totalSum) => {
   //console.debug(cards, totalSum, sumWithout7, cardsWithout7, allEqual)
 
   if (cards.length === 3) {
-    if (allEqual)
-      options.push({
-        options: cardsWithout7[0].code[0] === "1" ? "A" : cardsWithout7[0].code[0],
-        type: "tris"
-      })
-    
     if (sumWithout7+1 <= 9) {
       for (let i=0; i<9-sumWithout7; i++) {
         options.push({
@@ -130,14 +124,15 @@ export const getMattaOptions = (cards, totalSum) => {
         })
       }
     }
-  }
-  else if (cards.length === 4) {
-    if (allEqual)
+
+    if (allEqual) {
       options.push({
         options: cardsWithout7[0].code[0] === "1" ? "A" : cardsWithout7[0].code[0],
-        type: "MATTATA"
+        type: "tris"
       })
-    
+    }
+  }
+  else if (cards.length === 4) {
     if (sumWithout7+1 <= 15) {
       if (15-sumWithout7 <= 10) {
         options.push({
@@ -155,12 +150,19 @@ export const getMattaOptions = (cards, totalSum) => {
         })
       }
     }
+
+    if (allEqual) {
+      options.push({
+        options: cardsWithout7[0].code[0] === "1" ? "A" : cardsWithout7[0].code[0],
+        type: "MATTATA"
+      })
+    }
   }
 
   return options
 }
 
-export const checkCombinationFor15 = (cards, x, index=0, currentSum=0, currentCombination=[], bestCombination=null) => {
+export const checkCombinationFor15 = (matta, cards, x, index=0, currentSum=0, currentCombination=[], bestCombination=null) => {
   // Base case: se abbiamo controllato tutti gli elementi dell'array
   if (index === cards.length) {
     // Controlliamo se la somma corrente più x è uguale a 15 e se abbiamo almeno 2 elementi nell'array
@@ -172,12 +174,15 @@ export const checkCombinationFor15 = (cards, x, index=0, currentSum=0, currentCo
     return bestCombination;  // Nessuna nuova combinazione trovata, restituiamo la migliore finora
   }
 
+  // 7 di cuori
+  const curCard = cards[index] === "7H" ? (matta ? matta : cards[index]) : cards[index]
+
   // Caso ricorsivo: proviamo entrambe le possibilità
   // 1. Escludere l'elemento corrente
-  let exclude = checkCombinationFor15(cards, x, index + 1, currentSum, currentCombination, bestCombination);
+  let exclude = checkCombinationFor15(matta, cards, x, index + 1, currentSum, currentCombination, bestCombination);
 
   // 2. Includere l'elemento corrente nella somma
-  let include = checkCombinationFor15(cards, x, index + 1, currentSum + parseInt(getValueOfCard(cards[index])), [...currentCombination, cards[index]], bestCombination);
+  let include = checkCombinationFor15(matta, cards, x, index + 1, currentSum + parseInt(getValueOfCard(curCard)), [...currentCombination, cards[index]], bestCombination);
 
   // Confrontiamo i risultati delle due scelte e restituiamo la combinazione migliore (quella con più elementi)
   return include && (!exclude || include.length > exclude.length) ? include : exclude;

@@ -38,7 +38,7 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
     if (socket.recovered) {
         // recovery was successful: socket.id, socket.rooms and socket.data were restored
-        console.log(`Giocatore riconnesso: ${socket.id}, lista delle stanze: ${rooms}`);
+        console.log(`Giocatore riconnesso: ${socket.id}`);
     }
 
     console.log(`Giocatore connesso: ${socket.id}`);
@@ -54,6 +54,27 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('playerID', id);
     });
     */
+
+    socket.on('playerReconnected', (name, room) => {
+
+        if (rooms[room].players.length < 2) {
+            // Aggiungi il giocatore alla lista della room
+            rooms[room].players.push({
+                id: socket.id,
+                name: name
+            });
+            
+            socket.join(room);
+
+            console.log(`Il giocatore riconnesso: ${socket.id} della room: ${room}, riceverà questi dati: ${players}, ${gameType}, ${currentTurn}`);
+            io.to(room).emit('playersUpdate', {
+                players: rooms[room].players,
+                gameType: rooms[room].gameType,
+                currentTurn: rooms[room].players[rooms[room].currentTurnIndex].id,
+            });
+        }
+
+    });
 
     socket.on('getRooms', () => {
         socket.emit('getRooms', rooms);
