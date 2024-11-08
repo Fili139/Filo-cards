@@ -108,10 +108,7 @@ export const getMattaOptions = (cards, totalSum) => {
 
   const allEqual = cardsWithout7.every(card => card.code[0] === cardsWithout7[0].code[0]);
 
-  const options = [{
-    options: "7",
-    type: "default value"
-  }]
+  const options = []
 
   //console.debug(cards, totalSum, sumWithout7, cardsWithout7, allEqual)
 

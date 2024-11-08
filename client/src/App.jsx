@@ -26,11 +26,12 @@ function App() {
   const server = "https://ciapachinze.onrender.com";
   //const server = "http://localhost:3000";
 
-  const version = "1.0.0"
+  const version = "beta 2.1.0"
 
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
   //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7H";
 
+  //#region USE STATES
   const {
     mode,
     setMode,
@@ -109,12 +110,14 @@ function App() {
   } = useOfflineState();
 
   useBeforeUnloadEffect();
+  //#endregion
 
-
+  //#region USE EFFECTS
   /* BOT LOGIC */
   useEffect(() => {
     const getDeckOffline = async () => {
-      await getDeck();
+      setToastMessage(["Opponent moves first!", "error"])
+      await getDeck()
       setCardsDealt(true)
       setIsMyTurn(false)
     }
@@ -126,7 +129,7 @@ function App() {
   }, [mode, deck, gameType])
 
   useEffect(() => {
-    const botDeal = async () => { await getDeck(true); setCardsDealt(true); setIsMyTurn(true) }
+    const botDeal = async () => { setToastMessage(["You move first!", "success"]); await getDeck(true); setCardsDealt(true); setIsMyTurn(true) }
     const botDraw = async () => { if (await botDrawCards()) setIsMyTurn(true) }
     const botMove = async () => { await botMakeMove(); setIsMyTurn(true) }
 
@@ -425,6 +428,8 @@ function App() {
         toast.success(toastMessage[0]);
       if (toastMessage[1] === "error")
         toast.error(toastMessage[0]);
+      if (toastMessage[1] === "info")
+        toast(toastMessage[0]);
 
       setToastMessage(["", ""])
     }
@@ -435,6 +440,7 @@ function App() {
 
     setIsMyTurn(!!coinFlip)
   }, [])
+  //#endregion
 
   const endTurn = () => {
     if (mode === "multi") {
@@ -531,7 +537,7 @@ function App() {
             setCanDraw(true)
 
             //DA VERIFICARE
-            setIsMyTurn(prev =>  !prev)
+            setIsMyTurn(prev => !prev)
           }, 2500);
 
           return
@@ -745,13 +751,22 @@ function App() {
         const cardsTaken = selectedCard+","+selectedTableCard.join(",")
         const cardsTakenArray = cardsTaken.split(",")
 
-        cardsTakenArray.shift()
+        let playedCard = cardsTakenArray.shift()
 
         if (aceInTable) {
           if (!cardsTakenArray.some(card => card[0] === "A"))
             return false
-          else
-            return await addToPile(cardsTaken, selectedTableCard)
+          else {
+            let sumOfCardsTaken = 0
+
+            for (let i=0; i<cardsTakenArray.length; i++)
+              sumOfCardsTaken += parseInt(getValueOfCard(cardsTakenArray[i]))
+    
+            if (sumOfCardsTaken + parseInt(getValueOfCard(playedCard)) === 15)
+              return await addToPile(cardsTaken, selectedTableCard)
+            else
+              moveIsValid = false
+          }
         }
         else 
           return await addToPile(cardsTaken, tableCards)
@@ -993,20 +1008,24 @@ function App() {
   
           return windowPrompt
         }
+
+        return "7"
       }
       else {
         // Bot ha pescato la matta
-        setMatta(mattaOptions[mattaOptions.length-1].options)
-
-        return mattaOptions[mattaOptions.length-1].options
+        if (mattaOptions.length > 0) {
+          setMatta(mattaOptions[mattaOptions.length-1].options)
+          return mattaOptions[mattaOptions.length-1].options
+        }
+        
+        return "7"
       }
     }
 
     return ""
   }
 
-
-  /* BOT FUNCTIONS */
+  //#region BOT FUNCTIONS
   const botDrawCards = async (count=3) => {
     if (remaining-count >= 0) {
 
@@ -1031,7 +1050,8 @@ function App() {
           let isTris = false
 
           if (checkTris(data.cards, mattaValue)) {
-            setResetOpponentHand(false)
+            if (hand.length === 0)
+              setResetOpponentHand(false)
 
             isTris = true
 
@@ -1043,7 +1063,8 @@ function App() {
           }
   
           if (checkLess10(data.cards, mattaValue)) {
-            setResetOpponentHand(false)
+            if (hand.length === 0)
+              setResetOpponentHand(false)
             
             setOpponentScope(prev => prev+3)
             setOpponentPlayedCards(data.cards)
@@ -1183,7 +1204,7 @@ function App() {
 
     setSelectedTableCard([])
   } 
-  /* END BOT FUNCTIONS */
+  //#endregion
 
 
   return (
@@ -1207,9 +1228,15 @@ function App() {
           <br/>
           <br/>
 
-          <button onClick={() => setMode("single")}>Play offline</button>
-          {" "}
-          <button onClick={() => setMode("multi")}>Play online</button>
+          <div style={{ display: 'flex',  gap: '12px', alignItems: 'flex-start' }}>
+            <button onClick={() => setMode("single")}>Play offline</button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <button onClick={() => setMode("multi")} disabled={true}>Play online</button>
+                <label style={{ marginTop: '8px' }}>
+                  Coming soon!
+                </label>
+            </div>
+          </div>
 
           <br/>
           <br/>
