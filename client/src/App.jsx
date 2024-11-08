@@ -26,10 +26,10 @@ function App() {
   const server = "https://ciapachinze.onrender.com";
   //const server = "http://localhost:3000";
 
-  const version = "beta 2.1.0"
+  const version = "beta 2.1.1"
 
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
-  //const deckCards = "AS,AD,3D,KH,2D,2C,3H,3S,5D,7H";
+  //const deckCards = "3S,3D,3H,3C,2C,2H,2S,2D,AC,7H";
 
   //#region USE STATES
   const {
@@ -254,6 +254,9 @@ function App() {
 
       newSocket.on('matta', (matta) => {
         setMatta(matta)
+        toast("Matta: "+matta, {
+          icon: '🃏',
+        });
       });
 
       newSocket.on('is15or30', (remaining, toast) => {
@@ -428,8 +431,6 @@ function App() {
         toast.success(toastMessage[0]);
       if (toastMessage[1] === "error")
         toast.error(toastMessage[0]);
-      if (toastMessage[1] === "info")
-        toast(toastMessage[0]);
 
       setToastMessage(["", ""])
     }
@@ -493,8 +494,23 @@ function App() {
             aces++
         }
 
-        const allEqual = data.cards.every(card => card.code[0] === data.cards[0].code[0]);
+        let cardsSum = getCardsSum(data.cards)
 
+        /* ********* */
+        // 7 DI CUORI
+        /* ********* */
+        const mattaValue = checkMatta(data.cards, cardsSum, isBot)
+        /* ********* */
+        // 7 DI CUORI
+        /* ********* */
+
+        const allEqual = data.cards.every((card) => {
+          // 7 di cuori
+          const cardToCheck = data.cards[0].code === "7H" ? (mattaValue ? mattaValue : data.cards[0].code[0]) : data.cards[0].code[0]
+          return card.code[0] === cardToCheck || (card.code === "7H" && mattaValue === cardToCheck)
+          //return card.code[0] === data.cards[0].code[0] || (card.code === "7H" && mattaValue === data.cards[(index+1)%data.cards.length].code[0])
+        })
+        
         if (allEqual) {
           const toastMattata = "Mattata! Alle cards dealt are equal, game ends!"
 
@@ -542,16 +558,6 @@ function App() {
 
           return
         }
-
-        let cardsSum = getCardsSum(data.cards)
-
-        /* ********* */
-        // 7 DI CUORI
-        /* ********* */
-        const mattaValue = checkMatta(data.cards, cardsSum, isBot)
-        /* ********* */
-        // 7 DI CUORI
-        /* ********* */
         
         cardsSum = getCardsSum(data.cards, mattaValue)
 
@@ -1005,7 +1011,10 @@ function App() {
             windowPrompt = window.prompt(prompt)
   
           setMatta(windowPrompt)
-  
+          toast("Matta: "+windowPrompt, {
+            icon: '🃏',
+          });
+
           return windowPrompt
         }
 
@@ -1015,6 +1024,10 @@ function App() {
         // Bot ha pescato la matta
         if (mattaOptions.length > 0) {
           setMatta(mattaOptions[mattaOptions.length-1].options)
+          toast("Matta: "+mattaOptions[mattaOptions.length-1].options, {
+            icon: '🃏',
+          });
+          
           return mattaOptions[mattaOptions.length-1].options
         }
         
@@ -1232,7 +1245,7 @@ function App() {
             <button onClick={() => setMode("single")}>Play offline</button>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <button onClick={() => setMode("multi")} disabled={true}>Play online</button>
-                <label style={{ marginTop: '8px' }}>
+                <label style={{ marginTop: '8px' }} className='landing-text'>
                   Coming soon!
                 </label>
             </div>
@@ -1240,9 +1253,21 @@ function App() {
 
           <br/>
           <br/>
-          <br/>
 
           <a href='https://www.ilmugugnogenovese.it/gioco-della-cirulla-regole/2/' target='_blank'>Click here to check the rules</a>
+
+          <br/>
+          <br/>
+          <br/>
+
+          <p className='landing-text'>If you'd like to leave a feedback, give suggestions</p>
+          <p className='landing-text'> or request a feature, contact me at</p>
+          <a>filippo139@gmail.com</a>
+
+          <br/>
+          <br/>
+
+          <p className='landing-text'>Thank you for playing Ciapachinze!</p>
         </>
       }
 

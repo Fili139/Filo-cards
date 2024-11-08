@@ -35,6 +35,12 @@
   bottom: 0;
   width: 75vw;
   padding-bottom: 1vh;
+
+  color: rgba(255, 255, 255, 0.493);
+}
+
+.landing-text {
+  color: #E8FFEA ;
 }
 
 .button-move {

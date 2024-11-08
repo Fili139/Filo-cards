@@ -10,6 +10,18 @@ export const getValueOfCard = (card) => {
   return card[0];
 }
 
+const getSuitOfCard = (value) => {
+  if (value === "1")
+    return 'A'
+  else if (value === "8")
+    return 'J'
+  else if (value === "9")
+    return 'Q'
+  else if (value === "10")
+    return 'K'
+  return value;
+}
+
 export const getCardsSum = (cards, mattaValue="") => {
   let sum = 0
 
@@ -28,7 +40,11 @@ export const getCardsSum = (cards, mattaValue="") => {
 }
 
 export const checkTris = (cards, mattaValue="") => {
-  return cards.every((card) => card.code[0] === cards[0].code[0] || (card.code === "7H" && mattaValue === cards[0].code[0]))
+  return cards.every((card) =>  {
+    // 7 di cuori
+    const cardToCheck = cards[0].code === "7H" ? (mattaValue ? mattaValue : cards[0].code[0]) : cards[0].code[0]
+    return card.code[0] === cardToCheck || (card.code === "7H" && mattaValue === cardToCheck)
+  })
 }
 
 export const checkLess10 = (cards, mattaValue="") => {
@@ -51,9 +67,9 @@ export const checkLess10 = (cards, mattaValue="") => {
 export const handleBeforeUnload = (e) => {
   e.preventDefault();
   
-  const message =
-    "Are you sure you want to leave? All provided data will be lost.";
+  const message = "Are you sure you want to leave? All provided data will be lost.";
   e.returnValue = message;
+
   return message;
 };
 
@@ -110,13 +126,11 @@ export const getMattaOptions = (cards, totalSum) => {
 
   const options = []
 
-  //console.debug(cards, totalSum, sumWithout7, cardsWithout7, allEqual)
-
   if (cards.length === 3) {
     if (sumWithout7+1 <= 9) {
       for (let i=0; i<9-sumWithout7; i++) {
         options.push({
-          options: (9-sumWithout7-i).toString() === "1" ? "A" : (9-sumWithout7-i).toString(),
+          options: getSuitOfCard((9-sumWithout7-i).toString()), //(9-sumWithout7-i).toString() === "1" ? "A" : (9-sumWithout7-i).toString(),
           type: "< 10"
         })
       }
@@ -124,7 +138,7 @@ export const getMattaOptions = (cards, totalSum) => {
 
     if (allEqual) {
       options.push({
-        options: cardsWithout7[0].code[0] === "1" ? "A" : cardsWithout7[0].code[0],
+        options: getSuitOfCard(cardsWithout7[0].code[0]), //cardsWithout7[0].code[0] === "1" ? "A" : cardsWithout7[0].code[0],
         type: "tris"
       })
     }
@@ -133,7 +147,7 @@ export const getMattaOptions = (cards, totalSum) => {
     if (sumWithout7+1 <= 15) {
       if (15-sumWithout7 <= 10) {
         options.push({
-          options: (15-sumWithout7).toString() === "1" ? "A" : (15-sumWithout7).toString(),
+          options: getSuitOfCard((15-sumWithout7).toString()), //(15-sumWithout7).toString() === "1" ? "A" : (15-sumWithout7).toString(),
           type: "15 in table"
         })
       }
@@ -142,7 +156,7 @@ export const getMattaOptions = (cards, totalSum) => {
     if (sumWithout7+1 <= 30) {
       if (30-sumWithout7 <= 10) {
         options.push({
-          options: (30-sumWithout7).toString() === "1" ? "A" : (30-sumWithout7).toString(),
+          options: getSuitOfCard((30-sumWithout7).toString()), //(30-sumWithout7).toString() === "1" ? "A" : (30-sumWithout7).toString(),
           type: "30 in table"
         })
       }
@@ -150,7 +164,7 @@ export const getMattaOptions = (cards, totalSum) => {
 
     if (allEqual) {
       options.push({
-        options: cardsWithout7[0].code[0] === "1" ? "A" : cardsWithout7[0].code[0],
+        options: getSuitOfCard(cardsWithout7[0].code[0]), //cardsWithout7[0].code[0] === "1" ? "A" : cardsWithout7[0].code[0],
         type: "MATTATA"
       })
     }
