@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import './Card.css';
 
-const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard, isSelected }) => {
+const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard, isSelected, lift=false }) => {
   const [loaded, setLoaded] = useState(false)
   const [style, setStyle] = useState((origin === "hand" || origin === "opponent") ? "card-hand-image" : "card-table-image")
 
@@ -17,7 +17,11 @@ const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard,
     if (loaded)
       setStyle(prevStyle => prevStyle += " show-card")
   }, [loaded]);
-  
+
+  useEffect(() => {
+    if (lift)
+      setStyle(prevStyle => prevStyle += " lift-card")
+  }, [lift]);
 
   const onCardClick = (code) => {
     if (origin === "hand") {

@@ -4,6 +4,8 @@ Eliminare la stanza quando si visualizza il punteggio (occhio se si implementa i
 Bot più intelligente
 Scegliere difficoltà bot
 Mattata tutta buggata
+Identificare carte giocate quando si bussa
+Musichina
 ***Il 7 di cuori può valere come un qualunque numero (perchè è molto fluido) se serve per fare 15 o 30 nella tavola iniziale o meno di 10 nella mano***
 ***Cambiare turno del giocatore che dà le carte se modalità full***
 ***Modalità fast/full anche online***

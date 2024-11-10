@@ -42,6 +42,8 @@ export const useBaseState = () => {
 
   const [matta, setMatta] = useState("")
 
+  const [lastLift, setLastLift] = useState("")
+
   return {
     mode,
     setMode,
@@ -94,6 +96,8 @@ export const useBaseState = () => {
     gameType,
     setGameType,
     matta,
-    setMatta
+    setMatta,
+    lastLift,
+    setLastLift
   };
 };

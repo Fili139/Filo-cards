@@ -8,6 +8,10 @@
 	animation: flipY 2s forwards;
 }
 
+.lift-card {
+	transform: translateY(-1rem)
+}
+
 .card-table-image {
   	height: 14vh;
 

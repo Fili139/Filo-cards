@@ -23,10 +23,19 @@ import './App.css'
 
 
 function App() {
+
+  function setCustomVh() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  }
+
+  window.addEventListener('resize', setCustomVh);
+  setCustomVh();
+
   const server = "https://ciapachinze.onrender.com";
   //const server = "http://localhost:3000";
 
-  const version = "beta 2.1.1"
+  const version = "beta 2.1.2"
 
   const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
   //const deckCards = "3S,3D,3H,3C,2C,2H,2S,2D,AC,7H";
@@ -84,7 +93,9 @@ function App() {
     gameType,
     setGameType,
     matta,
-    setMatta
+    setMatta,
+    lastLift,
+    setLastLift
   } = useBaseState();
 
   const {
@@ -207,7 +218,11 @@ function App() {
           setOpponentPlayedCards((lastPlayedCards) => {
             if (lastPlayedCards.length+1 <= 3)
               return [...lastPlayedCards, played_card]
-            else return lastPlayedCards
+            else {
+              setLastLift(played_card.code)
+      
+              return lastPlayedCards
+            }
           })
         }
 
@@ -239,6 +254,8 @@ function App() {
           setCardsDealt(false)
           setScope(0)
           setOpponentScope(0)
+          setMatta("")
+          setLastLift("")
         }, 2500);
       });
 
@@ -299,18 +316,16 @@ function App() {
 
       newSocket.on('nextHand', () => {
         setGameIsOver(false)
-
         setDeck("")
-        
         setCardsDealt(false)
-        
         setScope(0)
         setOpponentScope(0)
-        
         setFinalScore({})
         setOpponentFinalScore({})
-        
         setOpponentPlayedCards([])
+        setMatta("")
+
+        setLastLift("")
       });
   
       // Funzione di pulizia: disconnetti il socket quando il componente si smonta
@@ -407,16 +422,14 @@ function App() {
     }
     else {
       setDeck("")
-
       setCardsDealt(false)
-
       setScope(0)
       setOpponentScope(0)
-
       setFinalScore({})
       setOpponentFinalScore({})
-
       setOpponentPlayedCards([])
+      setMatta("")
+      setLastLift("")
 
       if (socket)
         socket.emit("nextHand", room)
@@ -551,6 +564,8 @@ function App() {
             setScope(0)
             setOpponentScope(0)
             setCanDraw(true)
+            setMatta("")
+            setLastLift("")
 
             //DA VERIFICARE
             setIsMyTurn(prev => !prev)
@@ -1005,7 +1020,7 @@ function App() {
           for (const option of mattaOptions)
             prompt += option.options + " - " + option.type + "\n"
   
-          let windowPrompt = window.prompt(prompt)
+          let windowPrompt = window.prompt(prompt).toUpperCase()
   
           while (!mattaOptions.some(option => option.options === windowPrompt))
             windowPrompt = window.prompt(prompt)
@@ -1212,7 +1227,11 @@ function App() {
     setOpponentPlayedCards((lastPlayedCards) => {
       if (lastPlayedCards.length+1 <= 3)
         return [...lastPlayedCards, botHand.find(card => card.code === botDecision[0])]
-      else return lastPlayedCards
+      else {
+        setLastLift(botDecision[0])
+
+        return lastPlayedCards
+      }
     })
 
     setSelectedTableCard([])
@@ -1260,10 +1279,17 @@ function App() {
           <br/>
           <br/>
 
-          <p className='landing-text'>If you'd like to leave a feedback, give suggestions</p>
-          <p className='landing-text'> or request a feature, contact me at</p>
+          <p className='landing-text'>Install this website as an app</p>
+          <p className='landing-text'>for a better experience!</p>
+
+          <br/>
+
+          <p className='landing-text'>If you'd like to leave a feedback, report a bug</p>
+          <p className='landing-text'> or request a feature, feel free to contact me at</p>
           <a>filippo139@gmail.com</a>
 
+          <br/>
+          <br/>
           <br/>
           <br/>
 
@@ -1368,6 +1394,7 @@ function App() {
 
               <OpponentHand
                 playedCards={opponentPlayedCards}
+                lastLift={lastLift}
               />
 
               <p>
