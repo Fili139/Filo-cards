@@ -18,6 +18,7 @@ import ChooseNameForm from './components/ChooseNameForm'
 import JoinRoomForm from './components/JoinRoomForm'
 import ChooseGameTypeForm from './components/ChooseGameTypeForm'
 import DisplayScore from './components/DisplayScore'
+import HistoryModal from './components/HistoryModal'
 
 import './App.css'
 
@@ -25,20 +26,23 @@ import './App.css'
 function App() {
 
   function setCustomVh() {
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
+    const vh = window.innerHeight * 0.01
+    document.documentElement.style.setProperty('--vh', `${vh}px`)
   }
 
-  window.addEventListener('resize', setCustomVh);
-  setCustomVh();
+  window.addEventListener('resize', setCustomVh)
+  setCustomVh()
 
-  const server = "https://ciapachinze.onrender.com";
-  //const server = "http://localhost:3000";
+  
+  const server = "https://ciapachinze.onrender.com"
+  //const server = "http://localhost:3000"
 
-  const version = "beta 2.1.2"
+  const version = "beta 2.3.0"
 
-  const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH";
-  //const deckCards = "3S,3D,3H,3C,2C,2H,2S,2D,AC,7H";
+  const disableMultiplayer = false
+
+  const deckCards = "AS,AD,AC,AH,2S,2D,2C,2H,3S,3D,3C,3H,4S,4D,4C,4H,5S,5D,5C,5H,6S,6D,6C,6H,7S,7D,7C,7H,JS,JD,JC,JH,QS,QD,QC,QH,KS,KD,KC,KH"
+  //const deckCards = "3S,3D,3H,3C,2C,2H,2S,2D,AC,7H"
 
   //#region USE STATES
   const {
@@ -95,7 +99,11 @@ function App() {
     matta,
     setMatta,
     lastLift,
-    setLastLift
+    setLastLift,
+    history,
+    setHistory,
+    modal,
+    setModal
   } = useBaseState();
 
   const {
@@ -202,7 +210,7 @@ function App() {
       });
   
       newSocket.on('playersUpdate', ({ players, gameType, currentTurn }) => {
-        //console.debug(players)
+        console.debug("playersUpdate", players, gameType, currentTurn)
 
         setPlayers(players);
         setGameType(gameType);
@@ -716,6 +724,14 @@ function App() {
 
         setIsLastToTake(true)
 
+        if (selectedCard) {
+          setHistory(prevHistory => [...prevHistory, {
+            player: "you",
+            playedCard: selectedCard,
+            cardsTaken: cardsTaken
+          }])
+        }
+
         return true;
       }
     })
@@ -736,6 +752,12 @@ function App() {
     setTable(newTable);
 
     if (mode === "multi") socket.emit('playerMove', playedCard[0], "", newTable, room);
+
+    setHistory(prevHistory => [...prevHistory, {
+      player: "you",
+      playedCard: card,
+      cardsTaken: []
+    }])
 
     // la mossa è sempre valida
     return true;
@@ -1053,6 +1075,15 @@ function App() {
     return ""
   }
 
+  const openModal = (type) => {
+    setModal(type)
+  }
+
+  const closeModal = () => {
+    setModal("")
+  }
+
+
   //#region BOT FUNCTIONS
   const botDrawCards = async (count=3) => {
     if (remaining-count >= 0) {
@@ -1121,6 +1152,12 @@ function App() {
     // la mossa è sempre valida
     setTable((prevTable) => [...prevTable, ...playedCard]);
 
+    setHistory(prevHistory => [...prevHistory, {
+      player: "opponent",
+      playedCard: botSelectedCard,
+      cardsTaken: []
+    }])
+
     return true;
   }
 
@@ -1153,6 +1190,14 @@ function App() {
         setTable(newTable)
 
         setIsLastToTake(false)  
+
+        if (botSelectedCard) {
+          setHistory(prevHistory => [...prevHistory, {
+            player: "opponent",
+            playedCard: botSelectedCard,
+            cardsTaken: cardsTaken
+          }])
+        }
 
         return true;
       }
@@ -1248,6 +1293,10 @@ function App() {
         }}
       />
 
+      {modal === "history" && (
+        <HistoryModal history={history} closeModal={() => closeModal()} />
+      )}
+
       {!deck &&
         <>
           <Landing />
@@ -1263,13 +1312,16 @@ function App() {
           <div style={{ display: 'flex',  gap: '12px', alignItems: 'flex-start' }}>
             <button onClick={() => setMode("single")}>Play offline</button>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <button onClick={() => setMode("multi")} disabled={true}>Play online</button>
-                <label style={{ marginTop: '8px' }} className='landing-text'>
-                  Coming soon!
-                </label>
+                <button onClick={() => setMode("multi")} disabled={disableMultiplayer}>Play online</button>
+                {disableMultiplayer && 
+                  <label style={{ marginTop: '8px' }} className='landing-text'>
+                    Coming soon!
+                  </label>
+                }
             </div>
           </div>
 
+          <br/>
           <br/>
           <br/>
 
@@ -1277,10 +1329,11 @@ function App() {
 
           <br/>
           <br/>
-          <br/>
 
-          <p className='landing-text'>Install this website as an app</p>
-          <p className='landing-text'>for a better experience!</p>
+          {/*
+            <p className='landing-text'>Install this website as an app</p>
+            <p className='landing-text'>for a better experience!</p>
+          */}
 
           <br/>
 
@@ -1292,8 +1345,9 @@ function App() {
           <br/>
           <br/>
           <br/>
+          <br/>
 
-          <p className='landing-text'>Thank you for playing Ciapachinze!</p>
+          <b><p className='landing-text'>Thank you for playing Ciapachinze!</p></b>
         </>
       }
 
@@ -1388,9 +1442,13 @@ function App() {
                 </>
               }
 
-              <h4>
-                Cards remaining: {remaining}
-              </h4>
+              <span>
+                <h4 className='span-inline'>
+                  Cards remaining: {remaining} 🃏
+                </h4>
+                {" | "}
+                <a><h4 className='span-inline-cursor' onClick={() => setModal("history")}>History</h4></a>
+              </span>
 
               <OpponentHand
                 playedCards={opponentPlayedCards}

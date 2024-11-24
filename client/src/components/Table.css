@@ -9,6 +9,13 @@
     right: 0;
 }
 
-.table-cards {
-
+.table-empty {
+    position: fixed;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    bottom: calc(var(--vh) * 45);
+    left: 0;
+    right: 0;
 }

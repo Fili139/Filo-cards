@@ -1,36 +1,36 @@
-import { useState } from "react";
+import { useState } from "react"
 
 export const useBaseState = () => {
     
-  const [mode, setMode] = useState("");
+  const [mode, setMode] = useState("")
 
-  const [gameIsOver, setGameIsOver] = useState(false);
+  const [gameIsOver, setGameIsOver] = useState(false)
 
-  const [isMyTurn, setIsMyTurn] = useState(true);
+  const [isMyTurn, setIsMyTurn] = useState(true)
   
-  const [cardsDealt, setCardsDealt] = useState(false);
+  const [cardsDealt, setCardsDealt] = useState(false)
 
-  const [deck, setDeck] = useState("");
-  const [hand, setHand] = useState([]);
-  const [table, setTable] = useState([]);
-  const [remaining, setRemaining] = useState(40);
+  const [deck, setDeck] = useState("")
+  const [hand, setHand] = useState([])
+  const [table, setTable] = useState([])
+  const [remaining, setRemaining] = useState(40)
   
-  const [opponentsHand, setOpponentsHand] = useState(0);
-  const [opponentPlayedCards, setOpponentPlayedCards] = useState([]);
-  const [resetOpponentHand, setResetOpponentHand] = useState(true);
+  const [opponentsHand, setOpponentsHand] = useState(0)
+  const [opponentPlayedCards, setOpponentPlayedCards] = useState([])
+  const [resetOpponentHand, setResetOpponentHand] = useState(true)
 
-  const [selectedCard, setSelectedCard] = useState("");
-  const [selectedTableCard, setSelectedTableCard] = useState([]);
+  const [selectedCard, setSelectedCard] = useState("")
+  const [selectedTableCard, setSelectedTableCard] = useState([])
   
-  const [scope, setScope] = useState(0);
-  const [opponentScope, setOpponentScope] = useState(0);
+  const [scope, setScope] = useState(0)
+  const [opponentScope, setOpponentScope] = useState(0)
 
-  const [finalScore, setFinalScore] = useState({});
-  const [opponentFinalScore, setOpponentFinalScore] = useState({});
-  const [totalPoints, setTotalPoints] = useState(0);
-  const [opponentTotalPoints, setOpponentTotalPoints] = useState(0);
+  const [finalScore, setFinalScore] = useState({})
+  const [opponentFinalScore, setOpponentFinalScore] = useState({})
+  const [totalPoints, setTotalPoints] = useState(0)
+  const [opponentTotalPoints, setOpponentTotalPoints] = useState(0)
 
-  const [isLastToTake, setIsLastToTake] = useState(false);
+  const [isLastToTake, setIsLastToTake] = useState(false)
 
   const [canDraw, setCanDraw] = useState(true)
   const [canDeal, setCanDeal] = useState(true)
@@ -43,6 +43,10 @@ export const useBaseState = () => {
   const [matta, setMatta] = useState("")
 
   const [lastLift, setLastLift] = useState("")
+
+  const [history, setHistory] = useState([])
+
+  const [modal, setModal] = useState("")
 
   return {
     mode,
@@ -98,6 +102,10 @@ export const useBaseState = () => {
     matta,
     setMatta,
     lastLift,
-    setLastLift
+    setLastLift,
+    history,
+    setHistory,
+    modal,
+    setModal
   };
 };
