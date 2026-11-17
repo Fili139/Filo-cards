@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -174,27 +174,49 @@ function App() {
   /* END BOT LOGIC */
     
 
+  // Sempre aggiornato: serve dentro gli handler del socket (evita closure "stale")
+  const sessionRef = useRef({});
+  sessionRef.current = { room, name, gameType };
+
   useEffect(() => {
     if (mode === "multi") {
-      const newSocket = io(server,
-        {
-          reconnectionDelay: 10000, // defaults to 1000
-          reconnectionDelayMax: 10000 // defaults to 5000
-        }
-      );
+      // Id stabile per tab: sopravvive alle riconnessioni (socket.id invece cambia)
+      let stableId = sessionStorage.getItem("playerId");
+      if (!stableId) {
+        stableId = crypto.randomUUID();
+        sessionStorage.setItem("playerId", stableId);
+      }
+
+      const newSocket = io(server, {
+        auth: { playerId: stableId },
+        // reconnection delays di default (1s -> 5s), niente 10s fissi
+      });
+
+      // Quando la tab torna visibile il browser potrebbe aver sospeso il socket
+      const onVisible = () => {
+        if (document.visibilityState === "visible" && !newSocket.connected) newSocket.connect();
+      };
+      document.addEventListener("visibilitychange", onVisible);
+      window.addEventListener("online", onVisible);
 
       setSocket(newSocket);
       
       newSocket.emit("getRooms")
       
       newSocket.on("connect", () => {
-        if (socket?.recovered) {
-          console.debug("Giocatore riconnesso")
-          newSocket.emit('playerReconnected', name, room)
-        } else {
-          console.debug("Giocatore connesso")
-        }
+        console.debug("Connesso", newSocket.id, "recovered:", newSocket.recovered)
+        // Se ero già in una room, rientra (il server è idempotente)
+        const { room, name, gameType } = sessionRef.current
+        if (room) newSocket.emit('joinRoom', room, name, gameType)
       });
+
+      newSocket.on("disconnect", (reason) => {
+        console.warn("Socket disconnesso:", reason)
+        // "io server disconnect" = il server ha chiuso: il client NON riprova da solo
+        if (reason === "io server disconnect") newSocket.connect()
+      });
+
+      newSocket.on("connect_error", (err) => console.warn("connect_error:", err.message));
 
       newSocket.on('getRooms', (rooms) => {
         setRooms(rooms)
@@ -338,6 +360,8 @@ function App() {
   
       // Funzione di pulizia: disconnetti il socket quando il componente si smonta
       return () => {
+        document.removeEventListener("visibilitychange", onVisible);
+        window.removeEventListener("online", onVisible);
         newSocket.off('yourID');
         newSocket.off('deckID');
         newSocket.off('playersUpdate');

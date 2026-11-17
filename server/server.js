@@ -1,237 +1,192 @@
 const express = require('express');
 const http = require('http');
-const cors = require('cors');  // Importa cors
+const cors = require('cors');
 const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-
 const port = process.env.PORT || 3000;
 
-// Configura il middleware cors
-app.use(cors({
-    origin: ['http://localhost:5173', 'https://ciapachinze.surge.sh', 'https://ciapachinze_beta.surge.sh'],  // Permetti l'accesso al frontend (React app)
-    methods: ['GET', 'POST'],
-}));
+const ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'https://ciapachinze.surge.sh',
+    'https://ciapachinze_beta.surge.sh',
+];
+
+// Quanto tempo aspettare prima di togliere dalla room un giocatore caduto di connessione
+const RECONNECT_GRACE_MS = 90 * 1000;
+
+app.use(cors({ origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] }));
 
 const io = new Server(server, {
+    // Heartbeat più tollerante: tab in background / telefono in standby non vengono tagliati subito
+    pingInterval: 25 * 1000,
+    pingTimeout: 60 * 1000,
     connectionStateRecovery: {
-        // the backup duration of the sessions and the packets
         maxDisconnectionDuration: 2 * 60 * 1000,
-        // whether to skip middlewares upon successful recovery
         skipMiddlewares: true,
     },
-    cors: {
-        origin: ['http://localhost:5173', 'https://ciapachinze.surge.sh', 'https://ciapachinze_beta.surge.sh'],  // Indica l'origine da cui accetti richieste
-        methods: ["GET", "POST"]
-    }
+    cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] },
 });
 
-// Memorizza i giocatori e i turni per ogni room
+/*
+ rooms[room] = {
+   players: [{ id: <playerId stabile>, name, socketId, connected }],
+   gameType, currentTurnIndex
+ }
+ L'identità del giocatore NON è più socket.id (cambia a ogni riconnessione)
+ ma un playerId generato dal client e inviato in handshake.auth.
+*/
 const rooms = {};
+const graceTimers = new Map(); // `${room}:${playerId}` -> timeout
 
-app.get('/', (req, res) => {
-    res.redirect('https://ciapachinze.surge.sh');
-})
+const publicPlayers = (r) => r.players.map(({ id, name, connected }) => ({ id, name, connected }));
 
-// Quando un giocatore si connette
-io.on('connection', (socket) => {
-    if (socket.recovered) {
-        // recovery was successful: socket.id, socket.rooms and socket.data were restored
-        console.log(`Giocatore riconnesso: ${socket.id}`);
+const publicRooms = () => {
+    const out = {};
+    for (const [name, r] of Object.entries(rooms)) {
+        out[name] = { players: publicPlayers(r), gameType: r.gameType, currentTurnIndex: r.currentTurnIndex };
     }
+    return out;
+};
 
-    console.log(`Giocatore connesso: ${socket.id}`);
-
-    // Invia l'ID al giocatore connesso
-    socket.emit('yourID', socket.id);
-
-    // Invia l'ID del giocatore avversario connesso
-    /*
-    socket.on('playerID', (id) => {
-        console.log(`Il giocatore: ${id}`, "si è connesso");
-        
-        socket.broadcast.emit('playerID', id);
+function broadcastState(room) {
+    const r = rooms[room];
+    if (!r || r.players.length === 0) return;
+    io.to(room).emit('playersUpdate', {
+        players: publicPlayers(r),
+        gameType: r.gameType,
+        currentTurn: r.players[r.currentTurnIndex].id,
     });
-    */
+}
 
-    socket.on('playerReconnected', (name, room) => {
+function removePlayer(room, playerId) {
+    const r = rooms[room];
+    if (!r) return;
 
-        if (rooms[room].players.length < 2) {
-            // Aggiungi il giocatore alla lista della room
-            rooms[room].players.push({
-                id: socket.id,
-                name: name
-            });
-            
-            socket.join(room);
+    const idx = r.players.findIndex((p) => p.id === playerId);
+    if (idx === -1) return;
 
-            console.log(`Il giocatore riconnesso: ${socket.id} della room: ${room}, riceverà questi dati: ${players}, ${gameType}, ${currentTurn}`);
-            io.to(room).emit('playersUpdate', {
-                players: rooms[room].players,
-                gameType: rooms[room].gameType,
-                currentTurn: rooms[room].players[rooms[room].currentTurnIndex].id,
-            });
-        }
+    r.players.splice(idx, 1);
+    if (r.players.length === 0) {
+        delete rooms[room];
+        return;
+    }
+    if (idx < r.currentTurnIndex) r.currentTurnIndex--;
+    if (r.currentTurnIndex >= r.players.length) r.currentTurnIndex = 0;
+    broadcastState(room);
+}
 
-    });
+function clearGrace(room, playerId) {
+    const key = `${room}:${playerId}`;
+    clearTimeout(graceTimers.get(key));
+    graceTimers.delete(key);
+}
 
-    socket.on('getRooms', () => {
-        socket.emit('getRooms', rooms);
-    });
+app.get('/', (req, res) => res.redirect('https://ciapachinze.surge.sh'));
+// Endpoint leggero per uptime monitor / keep-alive
+app.get('/health', (req, res) => res.json({ ok: true, rooms: Object.keys(rooms).length }));
+
+io.on('connection', (socket) => {
+    const playerId = String(socket.handshake.auth?.playerId || socket.id);
+    socket.data.playerId = playerId;
+
+    console.log(`Connesso: socket=${socket.id} player=${playerId} recovered=${socket.recovered}`);
+
+    // Il client usa questo valore come "il mio id"
+    socket.emit('yourID', playerId);
+
+    socket.on('getRooms', () => socket.emit('getRooms', publicRooms()));
 
     socket.on('getPlayersInRoom', (room, callback) => {
-        const clientsInRoom = io.sockets.adapter.rooms.get(room);
-        const clientCount = clientsInRoom ? clientsInRoom.size : 0;
-    
-        // Rispondi al client tramite la callback
-        callback({ count: clientCount });
-    });   
+        const clients = io.sockets.adapter.rooms.get(room);
+        if (typeof callback === 'function') callback({ count: clients ? clients.size : 0 });
+    });
 
+    // Idempotente: va bene chiamarla anche a ogni riconnessione
     socket.on('joinRoom', (room, name, gameType) => {
-        console.log(`Il giocatore: ${name} (${socket.id})`, "vuole entrare nella room", room);
+        if (typeof room !== 'string' || !room) return;
 
-        // Se la room non esiste ancora, creala
         if (!rooms[room]) {
-            rooms[room] = {
-                players: [],
-                gameType: gameType,
-                currentTurnIndex: 0,
-            };
+            rooms[room] = { players: [], gameType, currentTurnIndex: 0 };
         }
-        
-        if (rooms[room].players.length < 2) {
-            // Aggiungi il giocatore alla lista della room
-            rooms[room].players.push({
-                id: socket.id,
-                name: name
-            });
-            
-            socket.join(room);
-            
-            console.log(`Il giocatore: ${name} (${socket.id})`, "è entrato nella room", room);
+        const r = rooms[room];
+        const existing = r.players.find((p) => p.id === playerId);
 
-            // Notifica tutti i giocatori nella room del nuovo stato
-            io.to(room).emit('playersUpdate', {
-                players: rooms[room].players,
-                gameType: rooms[room].gameType,
-                currentTurn: rooms[room].players[rooms[room].currentTurnIndex].id,
-            });
+        if (existing) {
+            // Riconnessione: stesso giocatore, nuovo socket
+            clearGrace(room, playerId);
+            existing.socketId = socket.id;
+            existing.connected = true;
+            if (name) existing.name = name;
+        } else if (r.players.length < 2) {
+            r.players.push({ id: playerId, name, socketId: socket.id, connected: true });
+        } else {
+            socket.emit('roomFull', room);
+            return;
         }
-        else {
-            //todo -> mostrare messaggio corretto se già 2 persone sono nella stanza
-        }
+
+        socket.join(room);
+        console.log(`${name} (${playerId}) è nella room ${room}`);
+        broadcastState(room);
     });
 
-    // Invio deck id generato da giocatore
-    socket.on('deckID', (deck_id, room) => {
-        //console.log(`Il giocatore: ${socket.id}`, "ha generato un deck con id:", deck_id, "inoltro...");
-        
-        socket.to(room).emit('deckID', deck_id);
+    // Compatibilità col vecchio client
+    socket.on('playerReconnected', (name, room) => {
     });
 
-    // Gestione di messaggi tra i giocatori
-    socket.on('playerMove', (played_card, cards_taken, newTable, room) => {
-        //console.log(`Mossa del giocatore: ${socket.id}`, "ha preso:", cards_taken);
-        
-        socket.to(room).emit('playerMove', played_card, cards_taken, newTable);
-    });
+    // Eventi che vengono semplicemente inoltrati all'avversario. L'ultimo argomento è sempre la room.
+    const RELAY = [
+        'deckID', 'playerMove', 'playerDraw', 'handUpdate', 'dealCards', 'scopeUpdate',
+        'trisOrLess10', 'is15or30', 'toast', 'aMonte', 'mattata', 'matta', 'playerScore', 'nextHand',
+    ];
+    for (const event of RELAY) {
+        socket.on(event, (...args) => {
+            const room = args.pop();
+            if (typeof room !== 'string') return;
+            socket.to(room).emit(event, ...args);
+        });
+    }
 
-    socket.on('playerDraw', (count, remaining, room) => {
-        //console.log(`Il giocatore: ${socket.id} ha pescato:`, count, ", carte rimanenti: ", remaining);
-        
-        socket.to(room).emit('playerDraw', count, remaining);
-    });
-
-    socket.on('handUpdate', (handCount, room) => {
-        socket.to(room).emit('handUpdate', handCount);
-    });
-
-    // Gestione di messaggi tra i giocatori
-    socket.on('dealCards', (table_cards, remaining, room) => {
-        //console.log(`Il giocatore: ${socket.id}`, "ha dato le carte, rimanenti:", remaining);
-        
-        socket.to(room).emit('dealCards', table_cards, remaining);
-    });
-
-    socket.on('scopeUpdate', (scope, room) => {
-        //console.log(`Il giocatore: ${socket.id}`, "ha fatto:", scope, "scopa/e");
-        
-        socket.to(room).emit('scopeUpdate', scope);
-    });
-
-    socket.on('trisOrLess10', (cards, room) => {
-        socket.to(room).emit('trisOrLess10', cards);
-    });
-
-    socket.on('is15or30', (remaining, toast, room) => {
-        socket.to(room).emit('is15or30', remaining, toast);
-    });
-
-    socket.on('toast', (toast, room) => {
-        socket.to(room).emit('toast', toast);
-    });
-
-    socket.on('aMonte', (toast, room) => {
-        socket.to(room).emit('aMonte', toast);
-    });
-
-    socket.on('mattata', (toast, room) => {
-        socket.to(room).emit('mattata', toast);
-    });
-
-    socket.on('matta', (matta, room) => {
-        socket.to(room).emit('matta', matta);
-    });
-
-    socket.on('playerScore', (cards, diamonds, scope, settebello, piccola, grande, primiera, room) => {
-        socket.to(room).emit('playerScore', cards, diamonds, scope, settebello, piccola, grande, primiera);
-    });
-
-    socket.on('nextHand', (room) => {
-        socket.to(room).emit('nextHand');
-    });
-    
-    // Gestisci la fine del turno da parte di un giocatore
     socket.on('endTurn', (room) => {
-        const roomData = rooms[room];
-
-        if (roomData) {
-            // Passa il turno al prossimo giocatore nella room
-            roomData.currentTurnIndex = (roomData.currentTurnIndex + 1) % roomData.players.length;
-            const nextPlayer = roomData.players[roomData.currentTurnIndex].id;
-
-            // Notifica tutti i giocatori della room del nuovo turno
-            io.to(room).emit('turnUpdate', { currentTurn: nextPlayer });
-        }
+        const r = rooms[room];
+        if (!r || r.players.length === 0) return;
+        r.currentTurnIndex = (r.currentTurnIndex + 1) % r.players.length;
+        io.to(room).emit('turnUpdate', { currentTurn: r.players[r.currentTurnIndex].id });
     });
 
-    // Quando un giocatore si disconnette
-    socket.on('disconnect', (reason, details) => {
-        console.log(`Un giocatore si è disconnesso: ${socket.id} - (reason: ${reason}, details: ${details})`);
+    socket.on('disconnect', (reason) => {
+        console.log(`Disconnesso: socket=${socket.id} player=${playerId} reason=${reason}`);
 
-        // Rimuovi il giocatore da tutte le room a cui apparteneva
-        for (const room in rooms) {
-            const roomData = rooms[room];
-            roomData.players = roomData.players.filter(player => player.id !== socket.id);
+        const intentional =
+            reason === 'client namespace disconnect' || reason === 'server namespace disconnect';
 
-            // Se la room ha ancora giocatori, aggiorna il turno
-            if (roomData.players.length > 0) {
-                if (roomData.currentTurnIndex >= roomData.players.length)
-                    roomData.currentTurnIndex = 0; // Resetta l'indice del turno
+        for (const room of Object.keys(rooms)) {
+            const p = rooms[room].players.find((pl) => pl.id === playerId);
+            // Ignora se nel frattempo il giocatore si è già riconnesso con un altro socket
+            if (!p || p.socketId !== socket.id) continue;
 
-                io.to(room).emit('playersUpdate', {
-                    players: roomData.players,
-                    currentTurn: roomData.players[roomData.currentTurnIndex].id,
-                });
+            if (intentional) {
+                removePlayer(room, playerId);
             } else {
-                // Se non ci sono più giocatori nella room, elimina la room
-                delete rooms[room];
+                // Caduta di rete / tab in background / sleep: periodo di grazia
+                p.connected = false;
+                broadcastState(room);
+                clearGrace(room, playerId);
+                graceTimers.set(
+                    `${room}:${playerId}`,
+                    setTimeout(() => {
+                        graceTimers.delete(`${room}:${playerId}`);
+                        removePlayer(room, playerId);
+                    }, RECONNECT_GRACE_MS)
+                );
             }
         }
     });
 });
 
-server.listen(port, () => {
-    console.log(`Server in ascolto sulla porta ${port}`);
-});
+// Un errore in un handler non deve far cadere tutto il processo (e quindi tutte le partite)
+process.on('uncaughtException', (err) => console.error('uncaughtException:', err));
+process.on('unhandledRejection', (err) => console.error('unhandledRejection:', err));
+
+server.listen(port, () => console.log(`Server in ascolto sulla porta ${port}`));
