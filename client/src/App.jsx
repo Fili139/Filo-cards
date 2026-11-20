@@ -177,6 +177,8 @@ function App() {
   // Sempre aggiornato: serve dentro gli handler del socket (evita closure "stale")
   const sessionRef = useRef({});
   sessionRef.current = { room, name, gameType };
+  // Ultimo stato noto dell'avversario: "connected" | "reconnecting" | undefined
+  const opponentStatusRef = useRef();
 
   useEffect(() => {
     if (mode === "multi") {
@@ -237,6 +239,29 @@ function App() {
         setPlayers(players);
         setGameType(gameType);
         setCurrentTurn(currentTurn);
+
+        // Stato dell'avversario (il server invia connected: true/false per giocatore)
+        const opponent = players.find(p => p.id !== stableId);
+        const prev = opponentStatusRef.current;
+        const TOAST_ID = "opponent-status";
+
+        if (opponent && opponent.connected === false) {
+          if (prev !== "reconnecting") {
+            toast.loading("Opponent disconnected, waiting for reconnection…", { id: TOAST_ID, duration: Infinity });
+          }
+          opponentStatusRef.current = "reconnecting";
+        } else if (opponent) {
+          if (prev === "reconnecting") {
+            toast.success("Opponent reconnected!", { id: TOAST_ID, duration: 3000 });
+          }
+          opponentStatusRef.current = "connected";
+        } else {
+          // Avversario sparito dalla room (scaduto il periodo di grazia o uscito)
+          if (prev === "reconnecting") {
+            toast.error("Opponent left the game", { id: TOAST_ID, duration: 4000 });
+          }
+          opponentStatusRef.current = undefined;
+        }
       });
   
       newSocket.on('turnUpdate', ({ currentTurn }) => {
@@ -360,6 +385,8 @@ function App() {
   
       // Funzione di pulizia: disconnetti il socket quando il componente si smonta
       return () => {
+        toast.dismiss("opponent-status");
+        opponentStatusRef.current = undefined;
         document.removeEventListener("visibilitychange", onVisible);
         window.removeEventListener("online", onVisible);
         newSocket.off('yourID');
