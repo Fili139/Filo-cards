@@ -37,7 +37,7 @@ function App() {
   const server = "https://ciapachinze.onrender.com"
   //const server = "http://localhost:3000"
 
-  const version = "beta 2.3.0"
+  const version = "beta 2.4.0"
 
   const disableMultiplayer = false
 
