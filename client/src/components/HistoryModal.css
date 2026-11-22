@@ -1,46 +1,50 @@
 .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
     animation: fadeIn 0.3s ease forwards;
     z-index: 100;
 }
 
 .modal-content {
     background: white;
-    padding-top: 1vh;
+    padding: 16px;
     border-radius: 8px;
-    width: 70%;
-    height: 40%;
-    /*
-    max-width: 80%;
-    max-height: 40%;
-    */
+    width: 100%;
+    max-width: 450px;
+
+    max-height: 80vh;
+    max-height: 80dvh;
+
+    overflow-y: auto;
+    box-sizing: border-box;
+
     text-align: center;
-    animation: slideIn 0.3s ease forwards;
     color: black;
+    animation: slideIn 0.3s ease forwards;
+}
+
+.modal-content ul {
+    padding-left: 20px;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.modal-content button {
+    margin-top: 12px;
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes slideIn {
-    from {
-        transform: translateY(-20px);
-    }
-    to {
-        transform: translateY(0);
-    }
+    from { transform: translateY(-20px); }
+    to { transform: translateY(0); }
 }

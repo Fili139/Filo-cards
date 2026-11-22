@@ -37,7 +37,7 @@ function App() {
   const server = "https://ciapachinze.onrender.com"
   //const server = "http://localhost:3000"
 
-  const version = "beta 2.4.0"
+  const version = "beta 2.5.0"
 
   const disableMultiplayer = false
 
@@ -1070,8 +1070,8 @@ function App() {
 
   const checkForCapottu = (piccola, grande, isOpponent, isBot) => {
     if (piccola === 6 && grande) {
-      const toastCapottu = "Capottu! Player took all the diamonds!"
-      const type = (isOpponent || isBot) ? "error" : "success"
+      const toastCapottu = "Capottu! Player took all the diamonds!";
+      const type = (isOpponent || isBot) ? "error" : "success";
 
       (isOpponent || isBot) ? setOpponentTotalPoints(prevPoints => prevPoints+51) : setTotalPoints(prevPoints => prevPoints+51)
 
