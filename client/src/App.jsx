@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -19,25 +19,30 @@ import JoinRoomForm from './components/JoinRoomForm'
 import ChooseGameTypeForm from './components/ChooseGameTypeForm'
 import DisplayScore from './components/DisplayScore'
 import HistoryModal from './components/HistoryModal'
+import MattaModal from './components/MattaModal'
 
 import './App.css'
 
 
 function App() {
 
-  function setCustomVh() {
-    const vh = window.innerHeight * 0.01
-    document.documentElement.style.setProperty('--vh', `${vh}px`)
-  }
+  useEffect(() => {
+    const setCustomVh = () => {
+      const vh = window.innerHeight * 0.01
+      document.documentElement.style.setProperty('--vh', `${vh}px`)
+    }
 
-  window.addEventListener('resize', setCustomVh)
-  setCustomVh()
+    setCustomVh()
+    window.addEventListener('resize', setCustomVh)
+
+    return () => window.removeEventListener('resize', setCustomVh)
+  }, [])
 
   
   const server = "https://ciapachinze.onrender.com"
   //const server = "http://localhost:3000"
 
-  const version = "beta 2.5.0"
+  const version = "beta 2.6.0"
 
   const disableMultiplayer = false
 
@@ -129,6 +134,23 @@ function App() {
   } = useOfflineState();
 
   useBeforeUnloadEffect();
+
+  // Matta (7H) choice modal: checkMatta awaits the promise until a button is tapped
+  const [mattaPrompt, setMattaPrompt] = useState(null) // { cards, options } | null
+  const mattaResolver = useRef(null)
+
+  const askMattaValue = (cards, options) => new Promise((resolve) => {
+    mattaResolver.current = resolve
+    setMattaPrompt({ cards, options })
+  })
+
+  const chooseMatta = (value) => {
+    setMattaPrompt(null)
+    if (mattaResolver.current) {
+      mattaResolver.current(value)
+      mattaResolver.current = null
+    }
+  }
   //#endregion
 
   //#region USE EFFECTS
@@ -339,6 +361,7 @@ function App() {
 
       newSocket.on('playerDraw', (count, remaining) => {
         //console.log("L'avversario ha pescato:", count, "carte rimanenti nel mazzo:", remaining);
+        setOpponentPlayedCards([])
         setRemaining(remaining)
       });
   
@@ -571,7 +594,7 @@ function App() {
         /* ********* */
         // 7 DI CUORI
         /* ********* */
-        const mattaValue = checkMatta(data.cards, cardsSum, isBot)
+        const mattaValue = await checkMatta(data.cards, cardsSum, isBot)
         /* ********* */
         // 7 DI CUORI
         /* ********* */
@@ -683,7 +706,7 @@ function App() {
 
       return await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/draw/?count="+count)
       .then((res) => res.json())
-      .then((data) => {
+      .then(async (data) => {
         if (data.cards) {
 
           setHand((prevHand) => [...prevHand, ...data.cards]);
@@ -694,17 +717,19 @@ function App() {
           /* ********* */
           // 7 DI CUORI
           /* ********* */
-          const mattaValue = checkMatta(data.cards, cardsSum)
+          const mattaValue = await checkMatta(data.cards, cardsSum)
           /* ********* */
           // 7 DI CUORI
           /* ********* */
 
-          // se è il giocatore 1 resetto sempre
-          if (resetOpponentHand || (mode === "multi" && players[1].id.replaceAll("-", "") == playerID))
+          // only offline: online the clear happens on 'playerDraw'
+          if (mode === "single" && resetOpponentHand)
             setOpponentPlayedCards([])
 
           setResetOpponentHand(true)
           
+          if (mode === "multi") socket.emit('playerDraw', count, data.remaining, room);
+
           let isTris = false
 
           if (checkTris(data.cards, mattaValue)) {
@@ -735,8 +760,6 @@ function App() {
               isTris ? socket.emit('toast', [toastBoth, "error"], room) : socket.emit('toast', [toastLess10, "error"], room)
             }
           }
-  
-          if (mode === "multi") socket.emit('playerDraw', count, data.remaining, room);
 
           setCanDraw(true)
 
@@ -1079,31 +1102,22 @@ function App() {
     }
   }
 
-  const checkMatta = (cards, cardsSum, isBot=false) => {
+  const checkMatta = async (cards, cardsSum, isBot=false) => {
     const isMatta =  cards.some(card => card.code === "7H")
-
-    const cardsCodes = cards.map(card => card.code).join(", ")
 
     if (isMatta) {
       const mattaOptions = getMattaOptions(cards, cardsSum)
       
       if (!isBot) {
         if (mattaOptions.length > 0) {
-          let prompt = "You drew the Matta (7H)! Choose what value should it get:\nThis is your hand: "+ cardsCodes + "\nPossible options:\n"
-          for (const option of mattaOptions)
-            prompt += option.options + " - " + option.type + "\n"
-  
-          let windowPrompt = window.prompt(prompt).toUpperCase()
-  
-          while (!mattaOptions.some(option => option.options === windowPrompt))
-            windowPrompt = window.prompt(prompt)
-  
-          setMatta(windowPrompt)
-          toast("Matta: "+windowPrompt, {
+          const chosen = await askMattaValue(cards, mattaOptions)
+
+          setMatta(chosen)
+          toast("Matta: "+chosen, {
             icon: '🃏',
           });
 
-          return windowPrompt
+          return chosen
         }
 
         return "7"
@@ -1141,7 +1155,7 @@ function App() {
 
       return await fetch("https://www.deckofcardsapi.com/api/deck/"+deck+"/draw/?count="+count)
       .then((res) => res.json())
-      .then((data) => {
+      .then(async (data) => {
         if (data.cards) {
 
           setBotHand((prevHand) => [...prevHand, ...data.cards]);
@@ -1152,7 +1166,7 @@ function App() {
           /* ********* */
           // 7 DI CUORI
           /* ********* */
-          const mattaValue = checkMatta(data.cards, cardsSum, true)
+          const mattaValue = await checkMatta(data.cards, cardsSum, true)
           /* ********* */
           // 7 DI CUORI
           /* ********* */
@@ -1346,6 +1360,14 @@ function App() {
 
       {modal === "history" && (
         <HistoryModal history={history} closeModal={() => closeModal()} />
+      )}
+
+      {mattaPrompt && (
+        <MattaModal
+          cards={mattaPrompt.cards}
+          options={mattaPrompt.options}
+          onChoose={chooseMatta}
+        />
       )}
 
       {!deck &&

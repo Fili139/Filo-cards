@@ -1,0 +1,30 @@
+.matta-cards {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin: 4px 0 12px;
+}
+
+.matta-cards img {
+    height: 12vh;
+    max-height: 110px;
+}
+
+.matta-options {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.modal-content .matta-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 72px;
+    margin-top: 0;
+}
+
+.matta-option small {
+    opacity: 0.7;
+}

@@ -1,27 +1,18 @@
 // Card.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import './Card.css';
 
-const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard, isSelected, lift=false }) => {
+const Card = ({ origin, code, image, selectedCard, setSelectedCard, isSelected, lift=false }) => {
   const [loaded, setLoaded] = useState(false)
-  const [style, setStyle] = useState((origin === "hand" || origin === "opponent") ? "card-hand-image" : "card-table-image")
 
-  useEffect(() => {
-    if (isSelected)
-      setStyle(prevStyle => prevStyle += " card-selected")
-    else
-      setStyle(prevStyle => prevStyle.replace("card-selected", ""))
-  }, [isSelected]);
-
-  useEffect(() => {
-    if (loaded)
-      setStyle(prevStyle => prevStyle += " show-card")
-  }, [loaded]);
-
-  useEffect(() => {
-    if (lift)
-      setStyle(prevStyle => prevStyle += " lift-card")
-  }, [lift]);
+  // className is derived from props/state on every render, so classes can't pile up or go stale
+  const baseClass = (origin === "hand" || origin === "opponent") ? "card-hand-image" : "card-table-image"
+  const className = [
+    baseClass,
+    loaded && "show-card",
+    isSelected && "card-selected",
+    lift && "lift-card"
+  ].filter(Boolean).join(" ")
 
   const onCardClick = (code) => {
     if (origin === "hand") {
@@ -54,7 +45,7 @@ const Card = ({ origin, code, image, suit, value, selectedCard, setSelectedCard,
         onLoad={() => setLoaded(true)}
         onClick={() => { if (code) onCardClick(code) }}
         src={image}
-        className={style}
+        className={className}
         style={{ display: loaded ? "" : "none" }}
       />
     </>
